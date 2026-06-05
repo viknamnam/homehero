@@ -1,0 +1,160 @@
+import React, { useCallback, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import {
+  useFonts, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold,
+} from '@expo-google-fonts/nunito';
+import { HouseholdProvider, useHousehold, Task } from './src/store/HouseholdStore';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+import TodayScreen from './src/screens/TodayScreen';
+import AddTaskScreen from './src/screens/AddTaskScreen';
+import WeekScreen from './src/screens/WeekScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import ComingSoonScreen from './src/screens/ComingSoonScreen';
+import { Toast } from './src/components/ui';
+import { colors, spacing, type } from './src/theme/tokens';
+
+// Tab order mirrors the product mockups: Home · Add · Week · Home Value · Thanks.
+// Home Value and Thanks are placeholder screens until their Phase 2 feature flags flip
+// (they ship TOGETHER — appreciation alongside comparison, per the build plan).
+// Settings moved off the tab bar to a gear button (top-right of every main screen).
+type Tab = 'today' | 'week' | 'homeValue' | 'thanks' | 'settings';
+
+function Shell() {
+  const { state } = useHousehold();
+  const [tab, setTab] = useState<Tab>('today');
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Task | null>(null);
+  const [toast, setToast] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    setToastVisible(true);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastVisible(false), 1800);
+  }, []);
+
+  if (!state.householdName) return <OnboardingScreen />;
+
+  const overlayOpen = adding || editing !== null;
+  const closeOverlay = () => { setAdding(false); setEditing(null); };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
+      {tab === 'today' && (
+        <TodayScreen onAdd={() => setAdding(true)} onEdit={(t) => setEditing(t)} />
+      )}
+      {tab === 'week' && <WeekScreen />}
+      {tab === 'homeValue' && <ComingSoonScreen kind="homeValue" />}
+      {tab === 'thanks' && <ComingSoonScreen kind="thanks" />}
+      {tab === 'settings' && <SettingsScreen />}
+
+      {/* Settings gear — top-right on every main screen */}
+      {!overlayOpen && (
+        <Pressable
+          style={styles.gearBtn}
+          onPress={() => setTab(tab === 'settings' ? 'today' : 'settings')}
+          accessibilityLabel="Settings"
+        >
+          <Text style={{ fontSize: 18, opacity: tab === 'settings' ? 1 : 0.6 }}>⚙️</Text>
+        </Pressable>
+      )}
+
+      {overlayOpen && (
+        <View style={StyleSheet.absoluteFill}>
+          <AddTaskScreen
+            key={editing?.id ?? 'new'}
+            editTask={editing}
+            onDone={(msg) => { closeOverlay(); setTab('today'); showToast(msg); }}
+          />
+          <Pressable style={styles.closeBtn} onPress={closeOverlay} accessibilityLabel="Close">
+            <Text style={[type.h2, { color: colors.charcoalSoft }]}>✕</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {!overlayOpen && (
+        <View style={styles.tabBar}>
+          <TabButton label="Home" icon="🏠" active={tab === 'today'} onPress={() => setTab('today')} />
+          <AddTabButton onPress={() => setAdding(true)} />
+          <TabButton label="Week" icon="📅" active={tab === 'week'} onPress={() => setTab('week')} />
+          <TabButton label="Home Value" icon="💲" active={tab === 'homeValue'} onPress={() => setTab('homeValue')} />
+          <TabButton label="Thanks" icon="💛" active={tab === 'thanks'} onPress={() => setTab('thanks')} />
+        </View>
+      )}
+
+      <Toast message={toast} visible={toastVisible} />
+      <StatusBar style="dark" />
+    </View>
+  );
+}
+
+function TabButton({ label, icon, active, onPress }: {
+  label: string; icon: string; active: boolean; onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={styles.tabBtn} accessibilityRole="tab" accessibilityState={{ selected: active }}>
+      <Text style={{ fontSize: 19, opacity: active ? 1 : 0.4 }}>{icon}</Text>
+      <Text style={[type.caption, { fontSize: 11, color: active ? colors.coralDeep : colors.charcoalSoft }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function AddTabButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={styles.tabBtn} accessibilityRole="button" accessibilityLabel="Add task">
+      <View style={styles.addCircle}>
+        <Text style={{ color: '#FFFFFF', fontSize: 20, lineHeight: 24 }}>＋</Text>
+      </View>
+      <Text style={[type.caption, { fontSize: 11, color: colors.charcoalSoft }]}>Add</Text>
+    </Pressable>
+  );
+}
+
+export default function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold,
+  });
+  if (!fontsLoaded && !fontError) {
+    return <View style={{ flex: 1, backgroundColor: colors.warmWhite }} />;
+  }
+  return (
+    <HouseholdProvider>
+      <Shell />
+    </HouseholdProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  tabBar: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    flexDirection: 'row', backgroundColor: colors.surface,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingBottom: 22, paddingTop: spacing.s,
+    shadowColor: colors.charcoal, shadowOpacity: 0.08,
+    shadowRadius: 12, shadowOffset: { width: 0, height: -3 }, elevation: 8,
+  },
+  tabBtn: { flex: 1, alignItems: 'center', minHeight: 48, justifyContent: 'center' },
+  addCircle: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: colors.coralDeep,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  gearBtn: {
+    position: 'absolute', top: 44, right: spacing.xl,
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: colors.charcoal, shadowOpacity: 0.08,
+    shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3,
+  },
+  closeBtn: {
+    position: 'absolute', top: 44, right: spacing.xl,
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
+  },
+});
