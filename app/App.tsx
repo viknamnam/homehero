@@ -5,6 +5,7 @@ import {
   useFonts, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold,
 } from '@expo-google-fonts/nunito';
 import { HouseholdProvider, useHousehold, Task } from './src/store/HouseholdStore';
+import { SyncProvider } from './src/lib/sync';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import TodayScreen from './src/screens/TodayScreen';
 import AddTaskScreen from './src/screens/AddTaskScreen';
@@ -124,7 +125,9 @@ export default function App() {
   }
   return (
     <HouseholdProvider>
-      <Shell />
+      <SyncProvider>
+        <Shell />
+      </SyncProvider>
     </HouseholdProvider>
   );
 }

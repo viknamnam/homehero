@@ -4,14 +4,111 @@ import {
 } from 'react-native';
 import { copy } from '../copy/strings';
 import { useHousehold } from '../store/HouseholdStore';
+import { useSync } from '../lib/sync';
 import { Chip, PrimaryButton } from '../components/ui';
 import { Logo, Wordmark } from '../components/brand';
 import { colors, spacing, type } from '../theme/tokens';
 
 const CURRENCIES = ['AED', 'USD', 'EUR', 'GBP'];
 
+function JoinFlow() {
+  const sync = useSync();
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [myName, setMyName] = useState('');
+
+  return (
+    <View>
+      <Text style={[type.caption, { marginTop: spacing.s }]}>{copy.sync.joinIntro}</Text>
+
+      {!sync.session ? (
+        !codeSent ? (
+          <View>
+            <TextInput
+              style={styles.input}
+              placeholder={copy.sync.emailPrompt}
+              placeholderTextColor={colors.charcoalSoft}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
+            <View style={{ marginTop: spacing.l }}>
+              <PrimaryButton
+                label={copy.sync.sendCode}
+                disabled={!email.includes('@')}
+                onPress={async () => { if (await sync.sendCode(email)) setCodeSent(true); }}
+              />
+            </View>
+          </View>
+        ) : (
+          <View>
+            <Text style={[type.label, styles.section]}>{copy.sync.codeSent}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={copy.sync.codePrompt}
+              placeholderTextColor={colors.charcoalSoft}
+              keyboardType="number-pad"
+              value={code}
+              onChangeText={setCode}
+            />
+            <View style={{ marginTop: spacing.l }}>
+              <PrimaryButton
+                label={copy.sync.verify}
+                disabled={code.trim().length < 6}
+                onPress={async () => {
+                  if (await sync.verifyCode(email, code)) {
+                    // if they already belong to a household this pulls it and
+                    // App leaves onboarding automatically; otherwise the invite form shows
+                    await sync.pullMyHousehold();
+                  }
+                }}
+              />
+            </View>
+          </View>
+        )
+      ) : (
+        <View>
+          <TextInput
+            style={styles.input}
+            placeholder={copy.sync.inviteCodePrompt}
+            placeholderTextColor={colors.charcoalSoft}
+            autoCapitalize="characters"
+            value={inviteCode}
+            onChangeText={setInviteCode}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder={copy.sync.yourNamePrompt}
+            placeholderTextColor={colors.charcoalSoft}
+            value={myName}
+            onChangeText={setMyName}
+          />
+          <View style={{ marginTop: spacing.l }}>
+            <PrimaryButton
+              label={sync.busy ? '…' : copy.sync.joinCta}
+              disabled={sync.busy || inviteCode.trim().length < 4 || myName.trim().length === 0}
+              onPress={() => sync.joinWithInvite(inviteCode, myName)}
+            />
+          </View>
+        </View>
+      )}
+
+      {sync.lastError ? (
+        <Text style={[type.caption, { color: colors.coralDeep, marginTop: spacing.m }]}>
+          {copy.errors.generic} ({sync.lastError})
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 export default function OnboardingScreen() {
   const { createHousehold } = useHousehold();
+  const { cloudEnabled } = useSync();
+  const [mode, setMode] = useState<'create' | 'join'>('create');
   const [householdName, setHouseholdName] = useState('');
   const [myName, setMyName] = useState('');
   const [partnerName, setPartnerName] = useState('');
@@ -35,6 +132,17 @@ export default function OnboardingScreen() {
           </Text>
         </View>
 
+        {cloudEnabled && (
+          <View style={{ flexDirection: 'row', marginTop: spacing.l }}>
+            <Chip label={copy.sync.createTab} selected={mode === 'create'} onPress={() => setMode('create')} />
+            <Chip label={copy.sync.signInTab} selected={mode === 'join'} onPress={() => setMode('join')} />
+          </View>
+        )}
+
+        {mode === 'join' ? (
+          <JoinFlow />
+        ) : (
+        <View>
         <Text style={[type.h2, styles.section]}>{copy.onboarding.createHousehold}</Text>
         <TextInput
           style={styles.input}
@@ -82,6 +190,8 @@ export default function OnboardingScreen() {
             onPress={() => createHousehold(householdName, currency, [myName, partnerName])}
           />
         </View>
+        </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
