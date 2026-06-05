@@ -25,7 +25,7 @@ function SyncCard() {
   const pendingCount = state.cloud.pendingOps.length;
 
   return (
-    <Card style={{ marginTop: spacing.l }}>
+    <Card style={{ marginTop: spacing.m }}>
       <Text style={type.h2}>{copy.sync.cardTitle}</Text>
 
       {!sync.session ? (
@@ -136,7 +136,7 @@ function SyncCard() {
 }
 
 export default function SettingsScreen() {
-  const { state, setHideMoney, setCurrency, setRate, reset } = useHousehold();
+  const { state, setHideMoney, setCurrency, setRate, reset, resetLogMetric } = useHousehold();
   const [confirmingReset, setConfirmingReset] = useState(false);
 
   const logTimes = state.logDurationsMs;
@@ -147,11 +147,11 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.warmWhite }} contentContainerStyle={styles.container}>
       <Header />
-      <Text style={type.serifTitle}>{state.householdName}</Text>
+      <Text style={[type.serifTitle, { fontSize: 26 }]}>{state.householdName}</Text>
 
       <SyncCard />
 
-      <Card style={{ marginTop: spacing.l }}>
+      <Card style={{ marginTop: spacing.m }}>
         <Text style={type.h2}>{copy.settings.membersTitle}</Text>
         <View style={{ flexDirection: 'row', marginTop: spacing.m }}>
           {state.members.map((m) => (
@@ -163,7 +163,7 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
-      <Card style={{ marginTop: spacing.l }}>
+      <Card style={{ marginTop: spacing.m }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flex: 1, paddingRight: spacing.m }}>
             <Text style={type.h2}>{copy.settings.hideMoneyLabel}</Text>
@@ -177,7 +177,7 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
-      <Card style={{ marginTop: spacing.l }}>
+      <Card style={{ marginTop: spacing.m }}>
         <Text style={type.h2}>{copy.settings.currencyTitle}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.m }}>
           {CURRENCIES.map((c) => (
@@ -187,7 +187,7 @@ export default function SettingsScreen() {
       </Card>
 
       {!state.hideMoney && (
-        <Card style={{ marginTop: spacing.l }}>
+        <Card style={{ marginTop: spacing.m }}>
           <Text style={type.h2}>{copy.settings.ratesTitle}</Text>
           <Text style={[type.caption, { marginBottom: spacing.m }]}>{copy.settings.ratesSub}</Text>
           {CATEGORIES.map((c) => (
@@ -208,13 +208,18 @@ export default function SettingsScreen() {
         </Card>
       )}
 
-      <Card style={{ marginTop: spacing.l }}>
+      <Card style={{ marginTop: spacing.m }}>
         <Text style={type.h2}>{copy.settings.metricsTitle}</Text>
         <Text style={[type.caption, { marginTop: spacing.xs }]}>
           {median !== null
             ? `Median time to log (last ${logTimes.length}): ${(median / 1000).toFixed(1)}s — target <10s`
             : 'Log a task to start measuring.'}
         </Text>
+        {median !== null && (
+          <Pressable onPress={resetLogMetric} style={{ marginTop: spacing.s }}>
+            <Text style={[type.label, { color: colors.charcoalSoft }]}>Reset timing data</Text>
+          </Pressable>
+        )}
       </Card>
 
       <Pressable
@@ -234,7 +239,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.xl, paddingTop: spacing.xxl },
+  container: { paddingHorizontal: spacing.l, paddingTop: spacing.xl, paddingBottom: spacing.l },
   syncInput: {
     backgroundColor: colors.warmWhite, borderRadius: 12, borderWidth: 1,
     borderColor: colors.mist, padding: spacing.m, marginTop: spacing.m,

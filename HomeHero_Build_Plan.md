@@ -2,7 +2,7 @@
 
 **Status:** Living document — tick items as completed, add gaps to Section 11 as discovered.
 **Owner:** Product team
-**Last updated:** 04 June 2026
+**Last updated:** 05 June 2026
 **North star:** Less arguing. More appreciation. Better teamwork at home.
 
 Legend: `[ ]` not started · `[x]` done · `[~]` in progress (edit manually) · 🔒 = launch blocker for that phase
@@ -29,8 +29,8 @@ Legend: `[ ]` not started · `[x]` done · `[~]` in progress (edit manually) · 
 - [ ] Figma prototype: **Add Task** flow (category chips → duration → person → value preview → save)
 - [ ] Figma prototype: **Week Summary** (hours, value, hours-by-day, category breakdown incl. mental load, vs last week)
 - [ ] Figma prototype: **Family Balance** ("Great team" framing, contribution by time/category/value, Plan Next Week CTA)
-- [ ] Define design system tokens: palette (warm white, sage, coral, peach, butter yellow, sky blue, lavender, charcoal/navy), type scale, spacing, rounded component style
-- [ ] Define person colours and category colours/icons (13 core categories)
+- [x] Define design system tokens: palette (warm white, sage, coral, peach, butter yellow, sky blue, lavender, charcoal/navy), type scale, spacing, rounded component style
+- [x] Define person colours and category colours/icons (13 core categories)
 - [ ] Accessibility pass on palette (contrast ratios for text on pastels)
 
 ### 0.2 Prototype testing (5–8 real households)
@@ -39,38 +39,39 @@ Legend: `[ ]` not started · `[x]` done · `[~]` in progress (edit manually) · 
 - [ ] 🔒 Test: can a parent complete the Add Task prototype flow in **<10 seconds**?
 - [ ] 🔒 Test: does the Family Balance screen read as *planning* or *judgement*? (interview both partners separately)
 - [ ] Test: reaction to estimated value figure — note who wants it hidden and why
+- [ ] Test: reaction to the "Invaluable" label on emotional/mental-load value (does it soften or confuse the money framing?)
 - [ ] Test: do users understand "mental load" categories without explanation? (If not, rename/iconography fix)
 - [ ] Write up findings; adjust screens and copy before build starts
 
 ### 0.3 Technical foundations
 
-- [ ] Decide stack (recommended: React Native or Flutter + Supabase/Firebase or Node/Postgres)
-- [ ] Decide auth approach (email + magic link recommended for family onboarding simplicity)
-- [ ] Set up repo, CI/CD, environments (dev / staging / prod)
+- [x] Decide stack (recommended: React Native or Flutter + Supabase/Firebase or Node/Postgres)
+- [x] Decide auth approach (email + magic link recommended for family onboarding simplicity)
+- [~] Set up repo, CI/CD, environments (repo + GitHub + staging Supabase done; CI + prod env pending)
 - [ ] Set up feature flag system (even a simple remote-config flag service)
 - [ ] Set up privacy-conscious analytics (event schema drafted: task_logged, log_duration_ms, thanks_sent, balance_viewed, money_hidden_toggled, weekly_review_opened)
-- [ ] Implement data model v1:
-  - [ ] `User` (id, name, role [adult/child/caregiver/guest], age_group, avatar, permissions)
-  - [ ] `Household` (id, members, currency, locale, default_rates)
-  - [ ] `Task` (id, title, category, subcategory, date_time, duration, assigned_user, created_by, source, notes, is_recurring_instance)
-  - [ ] `Category` (name, icon, colour, default_rate, mental_load_flag)
-  - [ ] `Rate` (category_id, hourly_rate, currency, source, custom_override)
-  - [ ] `Appreciation` (from_user, to_user, message, related_tasks, date)
-  - [ ] Reserve (don't build yet): `Reward`, `Suggestion` tables for V1.1
-- [ ] Seed the 13 core categories with `mental_load_flag` set on Planning/Admin, Remembering, Emotional Support, Child Logistics (logistics = partial — decide and log in Section 11)
+- [x] Implement data model v1:
+  - [x] `User` (id, name, role [adult/child/caregiver/guest], age_group, avatar, permissions)
+  - [x] `Household` (id, members, currency, locale, default_rates)
+  - [x] `Task` (id, title, category, subcategory, date_time, duration, assigned_user, created_by, source, notes, is_recurring_instance)
+  - [x] `Category` (name, icon, colour, default_rate, mental_load_flag)
+  - [x] `Rate` (category_id, hourly_rate, currency, source, custom_override)
+  - [x] `Appreciation` (from_user, to_user, message, related_tasks, date)
+  - [x] Reserve (don't build yet): `Reward`, `Suggestion` tables for V1.1
+- [x] Seed the 13 core categories with `mental_load_flag` set on Planning/Admin, Remembering, Emotional Support, Child Logistics (logistics = partial — decide and log in Section 11)
 
 ### 0.4 Copy & tone foundations
 
-- [ ] Write UX copy library v1: all phrases for Today, Add Task, Week Summary, Balance, empty states, errors
-- [ ] Codify the avoid-list / use-instead table as a linted string review checklist (see Section 9)
-- [ ] Draft notification copy set (gentle prompts only) for later phases
+- [x] Write UX copy library v1: all phrases for Today, Add Task, Week Summary, Balance, empty states, errors
+- [x] Codify the avoid-list / use-instead table as a linted string review checklist (see Section 9)
+- [x] Draft notification copy set (gentle prompts only) for later phases
 - [ ] Draft privacy policy outline (flag children's-data requirements early — see Section 10)
 
 ### Phase 0 exit criteria (go/no-go)
 
 - [ ] Prototype log flow tested at <10s with real users
 - [ ] Balance screen copy validated with at least one couple (no "judgement" reaction)
-- [ ] Stack, schema, and category list locked
+- [x] Stack, schema, and category list locked
 - [ ] Copy library v1 approved
 
 ---
@@ -84,30 +85,31 @@ Legend: `[ ]` not started · `[x]` done · `[~]` in progress (edit manually) · 
 
 ### Sprint 1 (Weeks 4–5): Household + logging
 
-- [ ] Onboarding: create account → create household → set currency → add adult members (invite by link/code)
-- [ ] Household member avatars + person colours
-- [ ] 🔒 Quick Add Task: category chips (13 categories), duration selector (preset chips: 5/10/15/30/45/60 min + custom), person selector (defaults to me), save in one tap
-- [ ] Optional notes field (collapsed by default — never in the critical path)
-- [ ] Edit task / delete task
-- [ ] Backdate a task (e.g. "this morning") — simple date/time adjust
-- [ ] Today / Home screen v1: today's tasks, time spent, top categories, quick add CTA
-- [ ] Empty states with warm copy ("Log your first task — even small things count")
+- [x] Onboarding: create account → create household → set currency → add adult members (invite by link/code)
+- [x] Household member avatars + person colours
+- [x] 🔒 Quick Add Task: category chips (13 categories), duration selector (preset chips: 5/10/15/30/45/60 min + custom), person selector (defaults to me), save in one tap
+- [x] Optional notes field (collapsed by default — never in the critical path)
+- [x] Edit task / delete task
+- [x] Backdate a task (e.g. "this morning") — simple date/time adjust
+- [x] Today / Home screen v1: today's tasks, time spent, top categories, quick add CTA
+- [x] Empty states with warm copy ("Log your first task — even small things count")
 
 ### Sprint 2 (Weeks 6–7): Value + week summary
 
-- [ ] Estimated value calculation: `duration_hours × category_hourly_rate`
-- [ ] Default rate library per category (single sensible default per currency to start)
-- [ ] Settings: edit hourly rates per category
-- [ ] Settings: currency selector
-- [ ] 🔒 Settings: **hide monetary value** toggle (hides value everywhere, instantly — build now, not later)
-- [ ] Value preview on Add Task (respects hide toggle)
-- [ ] Week Summary v1: total hours, total estimated value, hours-by-day chart, category breakdown (mental load categories visually first-class), comparison vs last week
-- [ ] "This week at home…" framing copy on summary
+- [x] Estimated value calculation: `duration_hours × category_hourly_rate`
+- [x] Default rate library per category (single sensible default per currency to start)
+- [x] Settings: edit hourly rates per category
+- [x] Settings: currency selector
+- [x] 🔒 Settings: **hide monetary value** toggle (hides value everywhere, instantly — build now, not later)
+- [x] Value preview on Add Task (respects hide toggle)
+- [ ] **Invaluable Work label v1** (Gaps #20): mental-load categories show "Real value: invaluable 💛" alongside the estimate on the Add Task preview and the Week Summary mental-load band — static copy, no message engine yet
+- [x] Week Summary v1: total hours, total estimated value, hours-by-day chart, category breakdown (mental load categories visually first-class), comparison vs last week
+- [x] "This week at home…" framing copy on summary
 
 ### Sprint 3 (Week 8): Hardening + alpha release
 
-- [ ] Offline tolerance: task saves locally if connection drops, syncs later (logging must never fail visibly)
-- [ ] Instrument: `log_duration_ms` from screen-open to save
+- [x] Offline tolerance: task saves locally if connection drops, syncs later (logging must never fail visibly)
+- [x] Instrument: `log_duration_ms` from screen-open to save
 - [ ] Crash reporting wired
 - [ ] Alpha distribution (TestFlight / Play internal track)
 - [ ] Recruit 10–20 friendly households; onboarding guide written
@@ -142,6 +144,7 @@ Legend: `[ ]` not started · `[x]` done · `[~]` in progress (edit manually) · 
   - [ ] Headline state copy is positive by default ("Great team — you're showing up for each other")
   - [ ] Rule-based balance label (avoid false precision; never "lowest contributor", never red warning states)
   - [ ] Appreciation summary appears **above or beside** percentages
+  - [ ] Invaluable framing on mental-load value: estimate shown with "Invaluable" label + basis note ("based on comparable support roles — emotional value cannot be fully priced"); never purely transactional
   - [ ] "Plan next week" CTA → simple shared checklist of recurring responsibilities to assign
 - [ ] Recurring tasks: create recurring responsibility (e.g. bins, school run), assign to a person, auto-appears for quick confirm
 - [ ] Recurring task reminders (opt-in)
@@ -263,6 +266,7 @@ Legend: `[ ]` not started · `[x]` done · `[~]` in progress (edit manually) · 
 - [ ] Rotation engine: no repeat to same user within 30 days; vary openings; celebration reserved for milestones; context-aware (heavy mental-load week → gentle, not jokey)
 - [ ] 🔒 Hero Voice safety rules (extend copy lint): humour targets the **task, never the person**; no sibling comparisons; no "finally…" framing; no gender/competence/laziness jokes; no "mum does everything / dad finally helped"
 - [ ] AI variation engine (flagged): approved base message → mini-model generates 10–30 variations → safety filter → human review → stored & rotated; live AI is NOT called per task
+- [ ] **Invaluable Work message pack**: rotating warm/witty/calm/kids messages for emotional & mental-load completions ("The spreadsheet tried to price it and quietly gave up") — shown **occasionally, not every log**, so it stays meaningful; same safety rules; kids variants effort-framed ("You helped someone feel better today — that is hero work")
 - [ ] Feedback loop: per-message "not for me / too much" reaction; poor messages retired
 - [ ] Data model: `messages`, `user_message_preferences`, `message_history`, `ai_message_jobs` tables (reserve in schema when Phase 4 starts)
 
@@ -347,6 +351,7 @@ Before merge, every string must pass:
 - [ ] Suggestions follow observation → practical option → planning structure
 - [ ] No counselling/relationship language anywhere
 - [ ] Humour (Hero Voice) punches at the task, never the person; no sibling comparisons; no "finally" framing; gentle tone auto-selected in heavy weeks
+- [ ] Emotional-support & mental-load value displays carry "Invaluable" framing — an estimate may appear, but care work is never presented as purely transactional
 - [ ] Reads as warm, calm, practical — would both partners feel okay seeing this on a shared screen?
 
 ---
@@ -388,7 +393,11 @@ Use this section to record discovered gaps, decisions, and deferred items so not
 | 14 | 05 Jun 2026 | Hero Voice (per-person motivation styles) adopted from feature brief | MVP keeps current warm copy only. Hero Voice v1 = Phase 4 (curated library + rotation engine + style/intensity settings + flagged AI-variation pipeline). Live-AI personalised summaries = Phase 5. Style named "Witty" — inspired-by, never branded on a real filmmaker | 4, 5 | Decided |
 | 15 | 05 Jun 2026 | Hero Voice monetisation (free Warm vs paid style packs) | Plausible premium feature; kids' motivational content never paywalled separately from family plan. Decide with V1.2 pricing work | 5 | Open |
 | 16 | 05 Jun 2026 | Parent approval of kids' completed tasks: default on or off? | Off = trust + lower friction; On = prevents tap-through. Decide from Phase 3 beta feedback per age group | 3 | Open |
-| 17 | | | | | |
+| 17 | 05 Jun 2026 | Magic-link sign-in breaks with corporate email (Outlook Safe Links pre-consumes the one-time token); Supabase built-in mailer limited to ~2–4 emails/hr; new dashboard locks template editing behind custom SMTP | **Pre-alpha requirement:** custom SMTP (Resend/Brevo free tier) + code-based sign-in via {{ .Token }} template. Web link flow acceptable for dev only | 1 | Decided |
+| 18 | 05 Jun 2026 | Staging Supabase region landed in Tokyo (ap-northeast-1) | Fine for staging; create the **prod** project in eu-central-1 (Frankfurt) for Dubai latency. Never share staging/prod databases | 3 | Decided |
+| 19 | 05 Jun 2026 | Security: Postgres views bypass RLS unless security_invoker is set — found during sync build | Fixed in migration 0003 for all three views; add "views respect RLS" assertion to the cross-household test suite | 1 | Resolved |
+| 20 | 05 Jun 2026 | "Invaluable Work" layer adopted from feature brief: emotional/mental-load tasks show estimate + "Invaluable" label rather than pure money | v1 static label → Phase 1 build (tested in Phase 0 Segment E); Home Value framing rule → Phase 2; rotating message pack → Phase 4 Hero Voice. **Also resolves the emotional-support pricing question:** rate multiplier stays modest (1.0–1.1) — the "Invaluable" frame carries the meaning, not the number. Mitigates Dubai value-reads-low risk (#12) | 0, 1, 2, 4 | Decided |
+| 21 | | | | | |
 
 ---
 

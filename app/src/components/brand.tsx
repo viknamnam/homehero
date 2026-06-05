@@ -52,5 +52,5 @@ export function Header() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.l },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.m },
 });

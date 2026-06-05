@@ -138,8 +138,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', backgroundColor: colors.surface,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
     paddingBottom: 22, paddingTop: spacing.s,
-    shadowColor: colors.charcoal, shadowOpacity: 0.08,
-    shadowRadius: 12, shadowOffset: { width: 0, height: -3 }, elevation: 8,
+    boxShadow: '0 -3px 12px rgba(46, 53, 72, 0.08)',
+    elevation: 8,
   },
   tabBtn: { flex: 1, alignItems: 'center', minHeight: 48, justifyContent: 'center' },
   addCircle: {
@@ -152,8 +152,8 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: colors.surface,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: colors.charcoal, shadowOpacity: 0.08,
-    shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3,
+    boxShadow: '0 2px 8px rgba(46, 53, 72, 0.08)',
+    elevation: 3,
   },
   closeBtn: {
     position: 'absolute', top: 44, right: spacing.xl,

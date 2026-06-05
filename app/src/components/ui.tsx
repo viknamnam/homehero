@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { colors, radius, shadow, spacing, type } from '../theme/tokens';
+import { colors, fonts, radius, shadow, spacing, type } from '../theme/tokens';
+
+const shadowCardCompat = shadow.card;
 
 export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
   return <View style={[styles.card, style]}>{children}</View>;
@@ -89,6 +91,36 @@ export function StatCard({ icon, iconTint, label, value, sub, style }: {
     </Card>
   );
 }
+
+// Compact variant — the refined mockup's 4-up row: icon top, tiny label, number.
+// Density rules: shrink the CARD, never the tap target or below 13px text.
+export function StatCardCompact({ icon, iconTint, label, value, sub, tint }: {
+  icon: string; iconTint: string; label: string; value: string; sub?: string; tint?: string;
+}) {
+  return (
+    <View style={[compactStyles.card, tint ? { backgroundColor: tint } : null]}>
+      <IconBadge icon={icon} tint={iconTint} size={30} />
+      <Text style={[type.caption, { marginTop: spacing.xs, textAlign: 'center' }]} numberOfLines={2}>
+        {label}
+      </Text>
+      <Text style={compactStyles.value}>{value}</Text>
+      {sub ? <Text style={[type.caption, { fontSize: 11 }]} numberOfLines={1}>{sub}</Text> : null}
+    </View>
+  );
+}
+
+const compactStyles = StyleSheet.create({
+  card: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    paddingVertical: spacing.m,
+    paddingHorizontal: spacing.xs,
+    alignItems: 'center',
+    ...shadowCardCompat,
+  },
+  value: { fontSize: 20, fontFamily: fonts.extrabold, color: colors.charcoal, marginTop: 2 },
+});
 
 // Warm affirmation banner ("Small shifts. Big impact.")
 export function AffirmationCard({ title, sub }: { title: string; sub: string }) {

@@ -32,7 +32,7 @@ export default function ComingSoonScreen({ kind }: { kind: 'homeValue' | 'thanks
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.xl, paddingTop: spacing.xxl },
+  container: { paddingHorizontal: spacing.l, paddingTop: spacing.xl },
   phasePill: {
     backgroundColor: colors.sageTint,
     paddingHorizontal: spacing.l,

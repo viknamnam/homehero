@@ -100,6 +100,7 @@ type Action =
   | { type: 'SET_CURRENCY'; currency: string }
   | { type: 'SET_RATE'; key: CategoryKey; rate: number }
   | { type: 'RECORD_LOG_MS'; ms: number }
+  | { type: 'RESET_LOG_MS' }
   | { type: 'ENQUEUE'; op: PendingOp }
   | { type: 'DEQUEUE'; opIds: string[] }
   | { type: 'RELINK_MEMBERS'; idMap: Record<string, string>; members: Member[]; meId: string }
@@ -138,6 +139,8 @@ function reducer(state: HouseholdState, action: Action): HouseholdState {
       return { ...state, rates: { ...state.rates, [action.key]: action.rate } };
     case 'RECORD_LOG_MS':
       return { ...state, logDurationsMs: [action.ms, ...state.logDurationsMs].slice(0, 20) };
+    case 'RESET_LOG_MS':
+      return { ...state, logDurationsMs: [] };
     case 'ENQUEUE': {
       // collapse duplicate ops targeting the same record
       const dup = (o: PendingOp) =>
@@ -221,6 +224,7 @@ interface StoreApi {
   setCurrency: (c: string) => void;
   setRate: (key: CategoryKey, rate: number) => void;
   recordLogMs: (ms: number) => void;
+  resetLogMetric: () => void;
   reset: () => void;
   taskValue: (categoryKey: CategoryKey, durationMin: number) => number;
 }
@@ -300,6 +304,7 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
       setCurrency: (c) => { dispatch({ type: 'SET_CURRENCY', currency: c }); enqueue({ kind: 'household_update' } as any); },
       setRate: (key, rate) => { dispatch({ type: 'SET_RATE', key, rate }); enqueue({ kind: 'rate_update', categoryKey: key } as any); },
       recordLogMs: (ms) => dispatch({ type: 'RECORD_LOG_MS', ms }),
+      resetLogMetric: () => dispatch({ type: 'RESET_LOG_MS' }),
       reset: () => dispatch({ type: 'RESET' }),
     };
   }, [state]);

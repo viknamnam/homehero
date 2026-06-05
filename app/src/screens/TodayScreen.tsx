@@ -3,7 +3,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { categoryByKey } from '../constants/categories';
 import { copy, currencySymbol } from '../copy/strings';
 import { fmtHM, isSameDay, useHousehold, Task } from '../store/HouseholdStore';
-import { AffirmationCard, Avatar, Card, IconBadge, PrimaryButton, StatCard } from '../components/ui';
+import { AffirmationCard, Avatar, Card, IconBadge, PrimaryButton, StatCardCompact } from '../components/ui';
 import { Header } from '../components/brand';
 import { colors, fonts, spacing, type } from '../theme/tokens';
 
@@ -73,44 +73,43 @@ export default function TodayScreen({ onAdd, onEdit }: {
           <View>
             <Header />
 
-            {/* Greeting block — avatar + serif name, mockup style */}
+            {/* Greeting block — compact: name + subline in one tight unit */}
             <View style={styles.greetRow}>
-              <Avatar name={me?.name ?? ''} colour={me?.colour ?? colors.peach} size={56} />
-              <View style={{ marginLeft: spacing.l, flex: 1 }}>
-                <Text style={type.body}>{greetingWord()}</Text>
-                <Text style={[type.serifTitle, { marginTop: -2 }]}>{me?.name} <Text style={{ fontSize: 22 }}>💛</Text></Text>
-                <Text style={[type.caption, { marginTop: 2 }]}>{greetSub}</Text>
+              <Avatar name={me?.name ?? ''} colour={me?.colour ?? colors.peach} size={48} />
+              <View style={{ marginLeft: spacing.m, flex: 1 }}>
+                <Text style={type.caption}>{greetingWord()}</Text>
+                <Text style={[type.serifTitle, { fontSize: 26, marginTop: -2 }]}>
+                  {me?.name} <Text style={{ fontSize: 18 }}>💛</Text>
+                </Text>
+                <Text style={[type.caption, { marginTop: 1 }]}>{greetSub}</Text>
               </View>
             </View>
 
-            {/* Stat grid — 2 columns like the mockup */}
-            <View style={styles.grid}>
-              <StatCard
+            {/* Compact stat row — everything important visible at a glance (refined mockup) */}
+            <View style={styles.statRow}>
+              <StatCardCompact
                 icon="📋" iconTint={colors.sageTint}
                 label={copy.today.statTasks}
                 value={String(todayTasks.length)}
-                style={styles.gridCard}
               />
-              <StatCard
+              <StatCardCompact
                 icon="🕐" iconTint={colors.skyTint}
                 label={copy.today.statTime}
                 value={fmtHM(totalMin)}
                 sub={copy.today.statTimeSub}
-                style={styles.gridCard}
               />
               {!state.hideMoney && (
-                <StatCard
+                <StatCardCompact
                   icon="💛" iconTint={colors.butterTint}
                   label={copy.today.statValue}
-                  value={`≈ ${cur}${totalValue}`}
+                  value={`${cur}${totalValue}`}
                   sub={copy.today.statValueSub}
-                  style={styles.gridCard}
                 />
               )}
             </View>
 
             {todayTasks.length === 0 ? (
-              <Card style={{ marginTop: spacing.s, alignItems: 'center' }}>
+              <Card style={{ marginTop: spacing.xs, alignItems: 'center' }}>
                 <Text style={[type.body, { textAlign: 'center', color: colors.charcoalSoft }]}>
                   {copy.today.emptyToday}
                 </Text>
@@ -133,37 +132,34 @@ export default function TodayScreen({ onAdd, onEdit }: {
           );
         }}
         ListFooterComponent={
-          todayTasks.length > 0 ? (
-            <View style={{ marginTop: spacing.m }}>
-              <AffirmationCard title={copy.today.affirmTitle} sub={copy.today.affirmSub} />
+          <View>
+            {todayTasks.length > 0 && (
+              <View style={{ marginTop: spacing.m }}>
+                <AffirmationCard title={copy.today.affirmTitle} sub={copy.today.affirmSub} />
+              </View>
+            )}
+            {/* CTA lives in the content flow — no overlap with the tab bar; the ＋ tab is always available */}
+            <View style={{ marginTop: spacing.l }}>
+              <PrimaryButton
+                label={`＋ ${copy.today.addTaskCta}`}
+                sub={copy.today.addTaskSub}
+                onPress={onAdd}
+              />
             </View>
-          ) : null
+          </View>
         }
       />
-
-      {/* Full-width two-line CTA above the tab bar, mockup style */}
-      <View style={styles.ctaWrap}>
-        <PrimaryButton
-          label={`＋ ${copy.today.addTaskCta}`}
-          sub={copy.today.addTaskSub}
-          onPress={onAdd}
-        />
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.xl, paddingTop: spacing.xxl, paddingBottom: 190 },
-  greetRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.l },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  gridCard: { width: '48.5%', marginBottom: spacing.m },
+  container: { paddingHorizontal: spacing.l, paddingTop: spacing.xl, paddingBottom: 110 },
+  greetRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.m },
+  statRow: { flexDirection: 'row', gap: spacing.s, marginBottom: spacing.s },
   taskRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: spacing.m, marginBottom: spacing.s,
+    paddingVertical: spacing.s + 2, marginBottom: spacing.s,
   },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  ctaWrap: {
-    position: 'absolute', left: spacing.xl, right: spacing.xl, bottom: 96,
-  },
 });

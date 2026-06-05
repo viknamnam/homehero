@@ -64,7 +64,7 @@ export default function WeekScreen() {
     const cat = CATEGORIES.find((c) => c.key === catKey)!;
     const cell = byCategory.get(catKey)!;
     return (
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.m }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.s }}>
         <IconBadge icon={cat.icon} tint={badgeTint} size={34} />
         <View style={{ flex: 1, marginLeft: spacing.m }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -87,10 +87,10 @@ export default function WeekScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.warmWhite }} contentContainerStyle={styles.container}>
       <Header />
-      <Text style={type.serifTitle}>{copy.week.header}</Text>
+      <Text style={[type.serifTitle, { fontSize: 26 }]}>{copy.week.header}</Text>
 
       {/* Hero card — hours ♥ value, like the mockup's "This week at home" */}
-      <Card style={{ marginTop: spacing.l }}>
+      <Card style={{ marginTop: spacing.m }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View style={{ flex: 1 }}>
             <Text style={type.caption}>Total hours</Text>
@@ -106,16 +106,16 @@ export default function WeekScreen() {
             </>
           )}
         </View>
-        <Text style={[type.caption, { marginTop: spacing.m }]}>{deltaText}</Text>
+        <Text style={[type.caption, { marginTop: spacing.s }]}>{deltaText}</Text>
       </Card>
 
       {totalMin === 0 ? (
-        <Card style={{ marginTop: spacing.l }}>
+        <Card style={{ marginTop: spacing.m }}>
           <Text style={[type.body, { color: colors.charcoalSoft }]}>{copy.week.sparseWeek}</Text>
         </Card>
       ) : (
         <>
-          <Card style={{ marginTop: spacing.l }}>
+          <Card style={{ marginTop: spacing.m }}>
             <Text style={type.h2}>Hours by day</Text>
             <View style={styles.chartRow}>
               {byDay.map((min, i) => (
@@ -131,7 +131,7 @@ export default function WeekScreen() {
           </Card>
 
           {mentalLoadCats.length > 0 && (
-            <Card style={{ marginTop: spacing.l, backgroundColor: colors.lavenderTint }}>
+            <Card style={{ marginTop: spacing.m, backgroundColor: colors.lavenderTint }}>
               <Text style={type.h2}>{copy.week.mentalLoadHeader}</Text>
               <Text style={[type.caption, { marginBottom: spacing.m }]}>{copy.week.mentalLoadSub}</Text>
               {mentalLoadCats.map((c) => (
@@ -141,7 +141,7 @@ export default function WeekScreen() {
           )}
 
           {physicalCats.length > 0 && (
-            <Card style={{ marginTop: spacing.l }}>
+            <Card style={{ marginTop: spacing.m }}>
               <Text style={[type.h2, { marginBottom: spacing.m }]}>By category</Text>
               {physicalCats.map((c) => (
                 <CategoryBar key={c.key} catKey={c.key} badgeTint={colors.skyTint} />
@@ -156,10 +156,10 @@ export default function WeekScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.xl, paddingTop: spacing.xxl },
+  container: { paddingHorizontal: spacing.l, paddingTop: spacing.xl, paddingBottom: spacing.l },
   chartRow: {
     flexDirection: 'row', alignItems: 'flex-end',
-    height: 140, marginTop: spacing.l,
+    height: 118, marginTop: spacing.m,
   },
   dayBar: { width: 18, borderRadius: 9 },
   barTrack: {

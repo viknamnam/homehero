@@ -57,12 +57,10 @@ export const type = {
   caption: { fontSize: 13, fontFamily: fonts.regular, color: colors.charcoalSoft },
 };
 
+// boxShadow is the modern cross-platform style (RN 0.76+); elevation kept for older Android
 export const shadow = {
   card: {
-    shadowColor: colors.charcoal,
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
+    boxShadow: '0 3px 10px rgba(46, 53, 72, 0.06)',
     elevation: 2,
   },
 };

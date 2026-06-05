@@ -123,8 +123,8 @@ export default function OnboardingScreen() {
     >
       <ScrollView contentContainerStyle={styles.container}>
         {/* Brand hero */}
-        <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
-          <Logo size={72} />
+        <View style={{ alignItems: 'center', marginBottom: spacing.l }}>
+          <Logo size={64} />
           <View style={{ height: spacing.m }} />
           <Wordmark size={32} />
           <Text style={[type.body, { color: colors.charcoalSoft, marginTop: spacing.s }]}>
@@ -198,8 +198,8 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.xl, paddingTop: spacing.xxl * 2 },
-  section: { marginTop: spacing.xl },
+  container: { paddingHorizontal: spacing.l, paddingTop: spacing.xxl, paddingBottom: spacing.l },
+  section: { marginTop: spacing.l },
   input: {
     backgroundColor: colors.surface,
     borderRadius: 12,
