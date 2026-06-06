@@ -1,4 +1,6 @@
 import { registerRootComponent } from 'expo';
+import { initSentry, wrapRoot } from './src/lib/sentry';
 import App from './App';
 
-registerRootComponent(App);
+initSentry();
+registerRootComponent(wrapRoot(App));

@@ -6,6 +6,7 @@ import { copy } from '../copy/strings';
 import { useHousehold } from '../store/HouseholdStore';
 import { useSync } from '../lib/sync';
 import { Chip, PrimaryButton } from '../components/ui';
+import { useInsets } from '../lib/insets';
 import { Logo, Wordmark } from '../components/brand';
 import { colors, spacing, type } from '../theme/tokens';
 
@@ -106,6 +107,7 @@ function JoinFlow() {
 }
 
 export default function OnboardingScreen() {
+  const insets = useInsets();
   const { createHousehold } = useHousehold();
   const { cloudEnabled } = useSync();
   const [mode, setMode] = useState<'create' | 'join'>('create');
@@ -121,7 +123,7 @@ export default function OnboardingScreen() {
       style={{ flex: 1, backgroundColor: colors.warmWhite }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xxl }]}>
         {/* Brand hero */}
         <View style={{ alignItems: 'center', marginBottom: spacing.l }}>
           <Logo size={64} />

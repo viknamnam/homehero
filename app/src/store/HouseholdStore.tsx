@@ -26,11 +26,22 @@ export interface Task {
   createdAt: string;
 }
 
+export interface Thanks {
+  id: string;
+  fromMemberId: string;
+  toMemberId: string;
+  categoryKey?: CategoryKey; // optional: thanks for a specific kind of work
+  note?: string;
+  createdAt: string;
+}
+
 export type PendingOp =
   | { id: string; kind: 'task_upsert'; taskId: string }
   | { id: string; kind: 'task_delete'; taskId: string }
   | { id: string; kind: 'household_update' }
-  | { id: string; kind: 'rate_update'; categoryKey: CategoryKey };
+  | { id: string; kind: 'rate_update'; categoryKey: CategoryKey }
+  | { id: string; kind: 'thanks_upsert'; thanksId: string }
+  | { id: string; kind: 'thanks_delete'; thanksId: string };
 
 export interface CloudState {
   householdId: string | null;
@@ -48,6 +59,7 @@ export interface HouseholdState {
   rates: Record<CategoryKey, number>;
   tasks: Task[];
   logDurationsMs: number[];
+  thanks: Thanks[];
   cloud: CloudState;
 }
 
@@ -73,6 +85,7 @@ const initialState: HouseholdState = {
   rates: initialRates('AED'),
   tasks: [],
   logDurationsMs: [],
+  thanks: [],
   cloud: initialCloud,
 };
 
@@ -88,6 +101,7 @@ export interface PullPayload {
   members: Member[];
   rates: Record<CategoryKey, number>;
   tasks: Task[];
+  thanks: Thanks[];
   categoryIds: Partial<Record<CategoryKey, string>>;
 }
 
@@ -103,6 +117,8 @@ type Action =
   | { type: 'RECORD_LOG_MS'; ms: number }
   | { type: 'RESET_LOG_MS' }
   | { type: 'SET_MEMBER_AVATAR'; memberId: string; avatarUrl: string }
+  | { type: 'ADD_THANKS'; thanks: Thanks }
+  | { type: 'DELETE_THANKS'; id: string }
   | { type: 'ENQUEUE'; op: PendingOp }
   | { type: 'DEQUEUE'; opIds: string[] }
   | { type: 'RELINK_MEMBERS'; idMap: Record<string, string>; members: Member[]; meId: string }
@@ -149,6 +165,10 @@ function reducer(state: HouseholdState, action: Action): HouseholdState {
         members: state.members.map((m) =>
           m.id === action.memberId ? { ...m, avatarUrl: action.avatarUrl } : m),
       };
+    case 'ADD_THANKS':
+      return { ...state, thanks: [action.thanks, ...state.thanks] };
+    case 'DELETE_THANKS':
+      return { ...state, thanks: state.thanks.filter((t) => t.id !== action.id) };
     case 'ENQUEUE': {
       // collapse duplicate ops targeting the same record
       const dup = (o: PendingOp) =>
@@ -228,6 +248,8 @@ interface StoreApi {
     memberId: string; occurredAt: Date;
   }) => void;
   deleteTask: (id: string) => void;
+  sendThanks: (input: { toMemberId: string; categoryKey?: CategoryKey; note?: string }) => void;
+  deleteThanks: (id: string) => void;
   setHideMoney: (v: boolean) => void;
   setCurrency: (c: string) => void;
   setRate: (key: CategoryKey, rate: number) => void;
@@ -307,6 +329,23 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
       deleteTask: (id) => {
         dispatch({ type: 'DELETE_TASK', id });
         enqueue({ kind: 'task_delete', taskId: id } as any);
+      },
+      sendThanks: ({ toMemberId, categoryKey, note }) => {
+        if (!state.meId) return;
+        const thanks: Thanks = {
+          id: uid(),
+          fromMemberId: state.meId,
+          toMemberId,
+          categoryKey,
+          note: note?.trim() || undefined,
+          createdAt: new Date().toISOString(),
+        };
+        dispatch({ type: 'ADD_THANKS', thanks });
+        enqueue({ kind: 'thanks_upsert', thanksId: thanks.id } as any);
+      },
+      deleteThanks: (id) => {
+        dispatch({ type: 'DELETE_THANKS', id });
+        enqueue({ kind: 'thanks_delete', thanksId: id } as any);
       },
       setHideMoney: (v) => { dispatch({ type: 'SET_HIDE_MONEY', value: v }); enqueue({ kind: 'household_update' } as any); },
       setCurrency: (c) => { dispatch({ type: 'SET_CURRENCY', currency: c }); enqueue({ kind: 'household_update' } as any); },

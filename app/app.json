@@ -14,18 +14,24 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.homehero.app"
+      "bundleIdentifier": "com.namavira.homehero"
     },
     "android": {
-      "package": "com.homehero.app",
+      "package": "com.namavira.homehero",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FAF6F0"
+        "backgroundColor": "#C94F3D"
       }
     },
     "web": {
       "bundler": "metro"
     },
-    "icon": "./assets/icon.png"
+    "icon": "./assets/icon.png",
+    "extra": {
+      "eas": {
+        "projectId": "3c17f185-45f6-4dab-8a8f-2517842ab6de"
+      }
+    },
+    "owner": "viknamnam"
   }
 }

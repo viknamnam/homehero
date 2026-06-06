@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import {
-  Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
-} from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { CATEGORIES } from '../constants/categories';
 import { copy } from '../copy/strings';
 import { useHousehold } from '../store/HouseholdStore';
 import { useSync } from '../lib/sync';
 import { usePhotoPicker } from '../lib/usePhotoPicker';
+import * as Clipboard from 'expo-clipboard';
 import { Avatar, Card, Chip, PrimaryButton } from '../components/ui';
 import { Icon } from '../components/icons';
 import { Header } from '../components/brand';
@@ -21,6 +20,7 @@ function SyncCard() {
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   if (!sync.cloudEnabled) return null;
   const linked = !!state.cloud.householdId;
@@ -102,6 +102,18 @@ function SyncCard() {
           {inviteCode ? (
             <View style={styles.inviteBox}>
               <Text style={[type.display, { letterSpacing: 4 }]}>{inviteCode}</Text>
+              <Pressable
+                onPress={async () => {
+                  await Clipboard.setStringAsync(inviteCode);
+                  setInviteCopied(true);
+                }}
+                style={{ marginTop: spacing.s }}
+                accessibilityRole="button"
+              >
+                <Text style={[type.label, { color: colors.coralDeep, textAlign: 'center' }]}>
+                  {inviteCopied ? copy.sync.inviteCopied : copy.sync.inviteCopy}
+                </Text>
+              </Pressable>
               <Text style={[type.caption, { marginTop: spacing.s, textAlign: 'center' }]}>
                 {copy.sync.inviteShare(inviteCode)}
               </Text>
@@ -142,6 +154,34 @@ export default function SettingsScreen() {
   const [confirmingReset, setConfirmingReset] = useState(false);
   // Photo avatars: shared flow (camera or library) — see lib/usePhotoPicker
   const { canEditPhoto, changeMyPhoto } = usePhotoPicker();
+  const sync = useSync();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  // Trust layer (build plan §13): your data is yours — take it or remove it.
+  const exportData = async () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      household: state.householdName,
+      currency: state.currency,
+      members: state.members.map((m) => ({ name: m.name, colour: m.colour })),
+      rates: state.rates,
+      tasks: state.tasks,
+      thanks: state.thanks,
+    };
+    const json = JSON.stringify(payload, null, 2);
+    try {
+      await Share.share({ message: json, title: 'HomeHero export' });
+    } catch {
+      await Clipboard.setStringAsync(json);
+      Alert.alert(copy.settings.exportCopiedTitle, copy.settings.exportCopiedBody);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmingDelete) { setConfirmingDelete(true); return; }
+    setConfirmingDelete(false);
+    await sync.deleteHousehold();
+  };
 
   const logTimes = state.logDurationsMs;
   const median = logTimes.length
@@ -229,6 +269,19 @@ export default function SettingsScreen() {
           ))}
         </Card>
       )}
+
+      <Card style={{ marginTop: spacing.m }}>
+        <Text style={type.h2}>{copy.settings.dataTitle}</Text>
+        <Text style={[type.caption, { marginTop: spacing.xs }]}>{copy.settings.dataSub}</Text>
+        <Pressable onPress={exportData} style={{ marginTop: spacing.m }} accessibilityRole="button">
+          <Text style={[type.label, { color: colors.sageDeep }]}>{copy.settings.exportCta}</Text>
+        </Pressable>
+        <Pressable onPress={confirmDelete} style={{ marginTop: spacing.m }} accessibilityRole="button">
+          <Text style={[type.label, { color: colors.coralDeep }]}>
+            {confirmingDelete ? copy.settings.deleteConfirm : copy.settings.deleteCta}
+          </Text>
+        </Pressable>
+      </Card>
 
       <Card style={{ marginTop: spacing.m }}>
         <Text style={type.h2}>{copy.settings.metricsTitle}</Text>

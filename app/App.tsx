@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   useFonts, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold,
@@ -12,7 +12,11 @@ import AddTaskScreen from './src/screens/AddTaskScreen';
 import WeekScreen from './src/screens/WeekScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ComingSoonScreen from './src/screens/ComingSoonScreen';
+import HomeValueScreen from './src/screens/HomeValueScreen';
+import ThanksScreen from './src/screens/ThanksScreen';
+import { FLAGS } from './src/constants/flags';
 import { Toast } from './src/components/ui';
+import { useInsets } from './src/lib/insets';
 import { Icon, IconName } from './src/components/icons';
 import { colors, spacing, type } from './src/theme/tokens';
 
@@ -38,6 +42,7 @@ function Shell() {
     toastTimer.current = setTimeout(() => setToastVisible(false), 1800);
   }, []);
 
+  const insets = useInsets();
   if (!state.householdName) return <OnboardingScreen />;
 
   const overlayOpen = adding || editing !== null;
@@ -49,14 +54,14 @@ function Shell() {
         <TodayScreen onAdd={() => setAdding(true)} onEdit={(t) => setEditing(t)} onSeeWeek={() => setTab('week')} />
       )}
       {tab === 'week' && <WeekScreen />}
-      {tab === 'homeValue' && <ComingSoonScreen kind="homeValue" />}
-      {tab === 'thanks' && <ComingSoonScreen kind="thanks" />}
+      {tab === 'homeValue' && (FLAGS.homeValue ? <HomeValueScreen /> : <ComingSoonScreen kind="homeValue" />)}
+      {tab === 'thanks' && (FLAGS.thanks ? <ThanksScreen onToast={showToast} /> : <ComingSoonScreen kind="thanks" />)}
       {tab === 'settings' && <SettingsScreen />}
 
       {/* Settings gear — top-right on every main screen */}
       {!overlayOpen && (
         <Pressable
-          style={styles.gearBtn}
+          style={[styles.gearBtn, { top: insets.top + spacing.xs }]}
           onPress={() => setTab(tab === 'settings' ? 'today' : 'settings')}
           accessibilityLabel="Settings"
         >
@@ -78,7 +83,7 @@ function Shell() {
       )}
 
       {!overlayOpen && (
-        <View style={styles.tabBar}>
+        <View style={[styles.tabBar, { paddingBottom: insets.bottom + spacing.s }]}>
           <TabButton label="Home" icon="house" active={tab === 'today'} onPress={() => setTab('today')} />
           <AddTabButton onPress={() => setAdding(true)} />
           <TabButton label="Week" icon="calendar" active={tab === 'week'} onPress={() => setTab('week')} />
@@ -125,11 +130,13 @@ export default function App() {
     return <View style={{ flex: 1, backgroundColor: colors.warmWhite }} />;
   }
   return (
-    <HouseholdProvider>
-      <SyncProvider>
-        <Shell />
-      </SyncProvider>
-    </HouseholdProvider>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.warmWhite }}>
+      <HouseholdProvider>
+        <SyncProvider>
+          <Shell />
+        </SyncProvider>
+      </HouseholdProvider>
+    </SafeAreaView>
   );
 }
 
@@ -138,7 +145,7 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 0, left: 0, right: 0,
     flexDirection: 'row', backgroundColor: colors.surface,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingBottom: 22, paddingTop: spacing.s,
+    paddingTop: spacing.s,
     boxShadow: '0 -3px 12px rgba(46, 53, 72, 0.08)',
     elevation: 8,
   },
@@ -149,7 +156,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   gearBtn: {
-    position: 'absolute', top: 44, right: spacing.xl,
+    position: 'absolute', right: spacing.xl,
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: colors.surface,
     alignItems: 'center', justifyContent: 'center',

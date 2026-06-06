@@ -7,6 +7,7 @@ import { copy, currencySymbol } from '../copy/strings';
 import { useHousehold, Task } from '../store/HouseholdStore';
 import { Avatar, Chip, PrimaryButton } from '../components/ui';
 import { colors, spacing, type } from '../theme/tokens';
+import { useInsets } from '../lib/insets';
 
 const DURATIONS = [5, 10, 15, 30, 45, 60];
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -26,6 +27,7 @@ export default function AddTaskScreen({ onDone, editTask }: {
   editTask?: Task | null;
 }) {
   const { state, addTask, updateTask, recordLogMs, taskValue } = useHousehold();
+  const insets = useInsets();
   const openedAt = useRef(Date.now());
   const isEdit = !!editTask;
 
@@ -207,7 +209,7 @@ export default function AddTaskScreen({ onDone, editTask }: {
       </ScrollView>
 
       {/* Sticky footer: Save is ALWAYS one thumb-reach away — never scroll to finish */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.m }]}>
         {!state.hideMoney && categoryKey ? (
           <View style={{ marginBottom: spacing.s }}>
             <Text style={[type.caption, { textAlign: 'center' }]}>

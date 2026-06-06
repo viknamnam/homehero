@@ -2,28 +2,32 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, fonts, spacing } from '../theme/tokens';
 
-// House-with-heart mark, drawn with Views — no image asset, scales with `size`.
+// "Bold Home" mark (launcher icon, miniaturized): coral-deep tile, white house, coral heart.
 export function Logo({ size = 34 }: { size?: number }) {
   const s = size;
   return (
-    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'flex-end' }}>
-      {/* roof */}
-      <View style={{
-        width: 0, height: 0,
-        borderLeftWidth: s * 0.52, borderRightWidth: s * 0.52, borderBottomWidth: s * 0.36,
-        borderLeftColor: 'transparent', borderRightColor: 'transparent',
-        borderBottomColor: colors.sky,
-        marginBottom: -1,
-      }} />
-      {/* body */}
-      <View style={{
-        width: s * 0.74, height: s * 0.56,
-        backgroundColor: colors.surface,
-        borderWidth: Math.max(2, s * 0.07), borderTopWidth: 0, borderColor: colors.sky,
-        borderBottomLeftRadius: s * 0.16, borderBottomRightRadius: s * 0.16,
-        alignItems: 'center', justifyContent: 'center',
-      }}>
-        <Text style={{ color: colors.coral, fontSize: s * 0.34, lineHeight: s * 0.42 }}>♥</Text>
+    <View style={{
+      width: s, height: s, borderRadius: s * 0.26, backgroundColor: colors.coralDeep,
+      alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    }}>
+      <View style={{ alignItems: 'center', justifyContent: 'flex-end' }}>
+        {/* roof */}
+        <View style={{
+          width: 0, height: 0,
+          borderLeftWidth: s * 0.36, borderRightWidth: s * 0.36, borderBottomWidth: s * 0.25,
+          borderLeftColor: 'transparent', borderRightColor: 'transparent',
+          borderBottomColor: '#FFFFFF',
+          marginBottom: -1,
+        }} />
+        {/* body */}
+        <View style={{
+          width: s * 0.56, height: s * 0.36,
+          backgroundColor: '#FFFFFF',
+          borderBottomLeftRadius: s * 0.12, borderBottomRightRadius: s * 0.12,
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Text style={{ color: colors.coralDeep, fontSize: s * 0.26, lineHeight: s * 0.3 }}>♥</Text>
+        </View>
       </View>
     </View>
   );
