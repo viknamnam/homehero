@@ -4,6 +4,7 @@ import { CATEGORIES } from '../constants/categories';
 import { copy, currencySymbol } from '../copy/strings';
 import { fmtHM, inWeekOf, startOfWeek, useHousehold } from '../store/HouseholdStore';
 import { Card, IconBadge } from '../components/ui';
+import { DonutChart } from '../components/DonutChart';
 import { Header } from '../components/brand';
 import { colors, spacing, type } from '../theme/tokens';
 
@@ -55,6 +56,18 @@ export default function WeekScreen() {
     });
     return map;
   }, [weekTasks]);
+
+  // Donut: top 4 categories by time + an "everything else" slice (mockup's Top categories ring)
+  const donut = useMemo(() => {
+    const rows = CATEGORIES
+      .filter((c) => byCategory.has(c.key))
+      .map((c) => ({ name: c.name, color: c.colour, min: byCategory.get(c.key)!.min }))
+      .sort((a, b) => b.min - a.min);
+    const top = rows.slice(0, 4);
+    const restMin = rows.slice(4).reduce((s2, r) => s2 + r.min, 0);
+    if (restMin > 0) top.push({ name: copy.week.donutOther, color: colors.mist, min: restMin });
+    return top;
+  }, [byCategory]);
 
   const mentalLoadCats = CATEGORIES.filter((c) => c.mentalLoad && byCategory.has(c.key));
   const physicalCats = CATEGORIES.filter((c) => !c.mentalLoad && byCategory.has(c.key));
@@ -116,6 +129,27 @@ export default function WeekScreen() {
       ) : (
         <>
           <Card style={{ marginTop: spacing.m }}>
+            <Text style={type.h2}>{copy.week.donutHeader}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.m }}>
+              <DonutChart
+                slices={donut.map((d) => ({ value: d.min, color: d.color }))}
+                size={116}
+                centerTitle={fmtHM(totalMin)}
+                centerSub={copy.week.donutCenterSub}
+              />
+              <View style={{ flex: 1, marginLeft: spacing.l }}>
+                {donut.map((d) => (
+                  <View key={d.name} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: d.color, marginRight: spacing.s }} />
+                    <Text style={[type.label, { flex: 1 }]} numberOfLines={1}>{d.name}</Text>
+                    <Text style={type.caption}>{Math.round((d.min / Math.max(totalMin, 1)) * 100)}%</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </Card>
+
+          <Card style={{ marginTop: spacing.m }}>
             <Text style={type.h2}>Hours by day</Text>
             <View style={styles.chartRow}>
               {byDay.map((min, i) => (
@@ -133,7 +167,13 @@ export default function WeekScreen() {
           {mentalLoadCats.length > 0 && (
             <Card style={{ marginTop: spacing.m, backgroundColor: colors.lavenderTint }}>
               <Text style={type.h2}>{copy.week.mentalLoadHeader}</Text>
-              <Text style={[type.caption, { marginBottom: spacing.m }]}>{copy.week.mentalLoadSub}</Text>
+              <Text style={type.caption}>{copy.week.mentalLoadSub}</Text>
+              {!state.hideMoney && (
+                <Text style={[type.caption, { color: colors.sageDeep, marginBottom: spacing.m, marginTop: 2 }]}>
+                  {copy.week.mentalLoadInvaluable}
+                </Text>
+              )}
+              {state.hideMoney && <View style={{ height: spacing.m }} />}
               {mentalLoadCats.map((c) => (
                 <CategoryBar key={c.key} catKey={c.key} badgeTint={colors.surface} />
               ))}

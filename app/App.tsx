@@ -13,6 +13,7 @@ import WeekScreen from './src/screens/WeekScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ComingSoonScreen from './src/screens/ComingSoonScreen';
 import { Toast } from './src/components/ui';
+import { Icon, IconName } from './src/components/icons';
 import { colors, spacing, type } from './src/theme/tokens';
 
 // Tab order mirrors the product mockups: Home · Add · Week · Home Value · Thanks.
@@ -45,7 +46,7 @@ function Shell() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
       {tab === 'today' && (
-        <TodayScreen onAdd={() => setAdding(true)} onEdit={(t) => setEditing(t)} />
+        <TodayScreen onAdd={() => setAdding(true)} onEdit={(t) => setEditing(t)} onSeeWeek={() => setTab('week')} />
       )}
       {tab === 'week' && <WeekScreen />}
       {tab === 'homeValue' && <ComingSoonScreen kind="homeValue" />}
@@ -59,7 +60,7 @@ function Shell() {
           onPress={() => setTab(tab === 'settings' ? 'today' : 'settings')}
           accessibilityLabel="Settings"
         >
-          <Text style={{ fontSize: 18, opacity: tab === 'settings' ? 1 : 0.6 }}>⚙️</Text>
+          <Icon name="gear" size={20} color={tab === 'settings' ? colors.charcoal : colors.charcoalSoft} />
         </Pressable>
       )}
 
@@ -71,18 +72,18 @@ function Shell() {
             onDone={(msg) => { closeOverlay(); setTab('today'); showToast(msg); }}
           />
           <Pressable style={styles.closeBtn} onPress={closeOverlay} accessibilityLabel="Close">
-            <Text style={[type.h2, { color: colors.charcoalSoft }]}>✕</Text>
+            <Icon name="x" size={20} color={colors.charcoalSoft} />
           </Pressable>
         </View>
       )}
 
       {!overlayOpen && (
         <View style={styles.tabBar}>
-          <TabButton label="Home" icon="🏠" active={tab === 'today'} onPress={() => setTab('today')} />
+          <TabButton label="Home" icon="house" active={tab === 'today'} onPress={() => setTab('today')} />
           <AddTabButton onPress={() => setAdding(true)} />
-          <TabButton label="Week" icon="📅" active={tab === 'week'} onPress={() => setTab('week')} />
-          <TabButton label="Home Value" icon="💲" active={tab === 'homeValue'} onPress={() => setTab('homeValue')} />
-          <TabButton label="Thanks" icon="💛" active={tab === 'thanks'} onPress={() => setTab('thanks')} />
+          <TabButton label="Week" icon="calendar" active={tab === 'week'} onPress={() => setTab('week')} />
+          <TabButton label="Home Value" icon="dollar" active={tab === 'homeValue'} onPress={() => setTab('homeValue')} />
+          <TabButton label="Thanks" icon="heart" active={tab === 'thanks'} onPress={() => setTab('thanks')} />
         </View>
       )}
 
@@ -93,11 +94,11 @@ function Shell() {
 }
 
 function TabButton({ label, icon, active, onPress }: {
-  label: string; icon: string; active: boolean; onPress: () => void;
+  label: string; icon: IconName; active: boolean; onPress: () => void;
 }) {
   return (
     <Pressable onPress={onPress} style={styles.tabBtn} accessibilityRole="tab" accessibilityState={{ selected: active }}>
-      <Text style={{ fontSize: 19, opacity: active ? 1 : 0.4 }}>{icon}</Text>
+      <Icon name={icon} size={20} color={active ? colors.coralDeep : colors.charcoalSoft} strokeWidth={active ? 2.4 : 2} />
       <Text style={[type.caption, { fontSize: 11, color: active ? colors.coralDeep : colors.charcoalSoft }]}>
         {label}
       </Text>
@@ -109,7 +110,7 @@ function AddTabButton({ onPress }: { onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={styles.tabBtn} accessibilityRole="button" accessibilityLabel="Add task">
       <View style={styles.addCircle}>
-        <Text style={{ color: '#FFFFFF', fontSize: 20, lineHeight: 24 }}>＋</Text>
+        <Icon name="plus" size={20} color="#FFFFFF" strokeWidth={2.6} />
       </View>
       <Text style={[type.caption, { fontSize: 11, color: colors.charcoalSoft }]}>Add</Text>
     </Pressable>

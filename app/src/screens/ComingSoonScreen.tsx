@@ -8,7 +8,7 @@ import { colors, spacing, type } from '../theme/tokens';
 export default function ComingSoonScreen({ kind }: { kind: 'homeValue' | 'thanks' }) {
   const title = kind === 'homeValue' ? copy.comingSoon.homeValueTitle : copy.comingSoon.thanksTitle;
   const body = kind === 'homeValue' ? copy.comingSoon.homeValueBody : copy.comingSoon.thanksBody;
-  const icon = kind === 'homeValue' ? '💲' : '💛';
+  const icon = kind === 'homeValue' ? ('dollar' as const) : ('heart' as const);
   const tint = kind === 'homeValue' ? colors.butterTint : colors.blushTint;
 
   return (

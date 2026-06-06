@@ -6,7 +6,9 @@ import { CATEGORIES } from '../constants/categories';
 import { copy } from '../copy/strings';
 import { useHousehold } from '../store/HouseholdStore';
 import { useSync } from '../lib/sync';
+import { usePhotoPicker } from '../lib/usePhotoPicker';
 import { Avatar, Card, Chip, PrimaryButton } from '../components/ui';
+import { Icon } from '../components/icons';
 import { Header } from '../components/brand';
 import { colors, spacing, type } from '../theme/tokens';
 
@@ -138,6 +140,8 @@ function SyncCard() {
 export default function SettingsScreen() {
   const { state, setHideMoney, setCurrency, setRate, reset, resetLogMetric } = useHousehold();
   const [confirmingReset, setConfirmingReset] = useState(false);
+  // Photo avatars: shared flow (camera or library) — see lib/usePhotoPicker
+  const { canEditPhoto, changeMyPhoto } = usePhotoPicker();
 
   const logTimes = state.logDurationsMs;
   const median = logTimes.length
@@ -154,12 +158,27 @@ export default function SettingsScreen() {
       <Card style={{ marginTop: spacing.m }}>
         <Text style={type.h2}>{copy.settings.membersTitle}</Text>
         <View style={{ flexDirection: 'row', marginTop: spacing.m }}>
-          {state.members.map((m) => (
-            <View key={m.id} style={{ alignItems: 'center', marginRight: spacing.l }}>
-              <Avatar name={m.name} colour={m.colour} size={48} />
-              <Text style={[type.caption, { marginTop: spacing.xs }]}>{m.name}</Text>
-            </View>
-          ))}
+          {state.members.map((m) => {
+            const mine = m.id === state.meId;
+            return (
+              <Pressable
+                key={m.id}
+                disabled={!(mine && canEditPhoto)}
+                onPress={changeMyPhoto}
+                style={{ alignItems: 'center', marginRight: spacing.l }}
+                accessibilityLabel={mine && canEditPhoto ? copy.settings.editPhoto : m.name}
+              >
+                <Avatar name={m.name} colour={m.colour} size={48} avatarUrl={m.avatarUrl} />
+                <Text style={[type.caption, { marginTop: spacing.xs }]}>{m.name}</Text>
+                {mine && canEditPhoto && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
+                    <Icon name="camera" size={11} color={colors.charcoalSoft} />
+                    <Text style={[type.caption, { fontSize: 11, marginLeft: 3 }]}>{copy.settings.editPhoto}</Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
         </View>
       </Card>
 
@@ -192,7 +211,10 @@ export default function SettingsScreen() {
           <Text style={[type.caption, { marginBottom: spacing.m }]}>{copy.settings.ratesSub}</Text>
           {CATEGORIES.map((c) => (
             <View key={c.key} style={styles.rateRow}>
-              <Text style={[type.label, { flex: 1 }]}>{c.icon} {c.name}</Text>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                <Icon name={c.icon} size={14} color={colors.charcoalSoft} />
+                <Text style={[type.label, { marginLeft: 6 }]}>{c.name}</Text>
+              </View>
               <TextInput
                 style={styles.rateInput}
                 keyboardType="numeric"

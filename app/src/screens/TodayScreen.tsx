@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { categoryByKey } from '../constants/categories';
-import { copy, currencySymbol } from '../copy/strings';
-import { fmtHM, isSameDay, useHousehold, Task } from '../store/HouseholdStore';
-import { AffirmationCard, Avatar, Card, IconBadge, PrimaryButton, StatCardCompact } from '../components/ui';
+import { CategoryKey, categoryByKey } from '../constants/categories';
+import { copy, currencySymbol, dailyLine } from '../copy/strings';
+import { fmtHM, inWeekOf, isSameDay, startOfWeek, useHousehold, Task } from '../store/HouseholdStore';
+import { AffirmationCard, Avatar, Card, Chip, IconBadge, PrimaryButton, StatCardCompact } from '../components/ui';
+import { usePhotoPicker } from '../lib/usePhotoPicker';
 import { Header } from '../components/brand';
 import { colors, fonts, spacing, type } from '../theme/tokens';
 
@@ -45,11 +46,12 @@ function TaskRow({ task, personColour, personName, onEdit, onDelete }: {
   );
 }
 
-export default function TodayScreen({ onAdd, onEdit }: {
-  onAdd: () => void; onEdit: (task: Task) => void;
+export default function TodayScreen({ onAdd, onEdit, onSeeWeek }: {
+  onAdd: () => void; onEdit: (task: Task) => void; onSeeWeek?: () => void;
 }) {
   const { state, deleteTask } = useHousehold();
   const me = state.members.find((m) => m.id === state.meId);
+  const { canEditPhoto, changeMyPhoto } = usePhotoPicker();
 
   const todayTasks = useMemo(() => {
     const now = new Date();
@@ -59,7 +61,22 @@ export default function TodayScreen({ onAdd, onEdit }: {
   const totalMin = todayTasks.reduce((s, t) => s + t.durationMin, 0);
   const totalValue = todayTasks.reduce((s, t) => s + t.valueAmount, 0);
   const cur = currencySymbol[state.currency] ?? '';
-  const greetSub = copy.today.greetingSubs[new Date().getDate() % copy.today.greetingSubs.length];
+  const greetSub = dailyLine();
+
+  // "This week so far" — the morning-open view when today is still empty
+  const weekStats = useMemo(() => {
+    const ws = startOfWeek(new Date());
+    const wk = state.tasks.filter((t) => inWeekOf(t.occurredAt, ws));
+    const min = wk.reduce((sum, t) => sum + t.durationMin, 0);
+    const value = wk.reduce((sum, t) => sum + t.valueAmount, 0);
+    const byCat = new Map<string, number>();
+    wk.forEach((t) => byCat.set(t.categoryKey, (byCat.get(t.categoryKey) ?? 0) + t.durationMin));
+    const top = [...byCat.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([k, m2]) => ({ cat: categoryByKey(k as CategoryKey), min: m2 }));
+    return { min, value, top };
+  }, [state.tasks]);
 
   const memberById = (id: string) => state.members.find((m) => m.id === id);
 
@@ -75,7 +92,14 @@ export default function TodayScreen({ onAdd, onEdit }: {
 
             {/* Greeting block — compact: name + subline in one tight unit */}
             <View style={styles.greetRow}>
-              <Avatar name={me?.name ?? ''} colour={me?.colour ?? colors.peach} size={48} />
+              <Pressable
+                onPress={changeMyPhoto}
+                disabled={!canEditPhoto}
+                accessibilityLabel={canEditPhoto ? copy.photo.title : me?.name}
+                hitSlop={6}
+              >
+                <Avatar name={me?.name ?? ''} colour={me?.colour ?? colors.peach} size={48} avatarUrl={me?.avatarUrl} />
+              </Pressable>
               <View style={{ marginLeft: spacing.m, flex: 1 }}>
                 <Text style={type.caption}>{greetingWord()}</Text>
                 <Text style={[type.serifTitle, { fontSize: 26, marginTop: -2 }]}>
@@ -88,19 +112,19 @@ export default function TodayScreen({ onAdd, onEdit }: {
             {/* Compact stat row — everything important visible at a glance (refined mockup) */}
             <View style={styles.statRow}>
               <StatCardCompact
-                icon="📋" iconTint={colors.sageTint}
+                icon="clipboard-check" iconTint={colors.sageTint}
                 label={copy.today.statTasks}
                 value={String(todayTasks.length)}
               />
               <StatCardCompact
-                icon="🕐" iconTint={colors.skyTint}
+                icon="clock" iconTint={colors.skyTint}
                 label={copy.today.statTime}
                 value={fmtHM(totalMin)}
                 sub={copy.today.statTimeSub}
               />
               {!state.hideMoney && (
                 <StatCardCompact
-                  icon="💛" iconTint={colors.butterTint}
+                  icon="coins" iconTint={colors.butterTint}
                   label={copy.today.statValue}
                   value={`${cur}${totalValue}`}
                   sub={copy.today.statValueSub}
@@ -109,11 +133,42 @@ export default function TodayScreen({ onAdd, onEdit }: {
             </View>
 
             {todayTasks.length === 0 ? (
-              <Card style={{ marginTop: spacing.xs, alignItems: 'center' }}>
-                <Text style={[type.body, { textAlign: 'center', color: colors.charcoalSoft }]}>
-                  {copy.today.emptyToday}
-                </Text>
-              </Card>
+              weekStats.min > 0 ? (
+                <Card style={{ marginTop: spacing.xs }}>
+                  <Text style={type.h2}>{copy.today.weekSoFarHeader}</Text>
+                  <View style={{ flexDirection: 'row', marginTop: spacing.s }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={type.caption}>Hours</Text>
+                      <Text style={[type.display, { fontSize: 24 }]}>{fmtHM(weekStats.min)}</Text>
+                    </View>
+                    {!state.hideMoney && (
+                      <View style={{ flex: 1 }}>
+                        <Text style={type.caption}>Value created</Text>
+                        <Text style={[type.display, { fontSize: 24 }]}>{cur}{weekStats.value}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.m }}>
+                    {weekStats.top.map((t) => (
+                      <Chip key={t.cat.key} label={`${t.cat.name} · ${fmtHM(t.min)}`} iconName={t.cat.icon} />
+                    ))}
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={type.caption}>{copy.today.weekSoFarSub}</Text>
+                    {onSeeWeek && (
+                      <Pressable onPress={onSeeWeek} hitSlop={8} accessibilityRole="button">
+                        <Text style={[type.label, { color: colors.coralDeep }]}>{copy.today.weekSoFarCta}</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                </Card>
+              ) : (
+                <Card style={{ marginTop: spacing.xs, alignItems: 'center' }}>
+                  <Text style={[type.body, { textAlign: 'center', color: colors.charcoalSoft }]}>
+                    {copy.today.emptyToday}
+                  </Text>
+                </Card>
+              )
             ) : (
               <Text style={[type.h2, { marginTop: spacing.m, marginBottom: spacing.s }]}>Today</Text>
             )}

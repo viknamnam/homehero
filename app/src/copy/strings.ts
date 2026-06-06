@@ -24,16 +24,44 @@ export const copy = {
     statTimeSub: 'so far today',
     statValue: 'Home value today',
     statValueSub: 'created',
-    greetingSubs: [
-      "Let's see the day together.",
-      'Even small things count.',
-      'One thing at a time.',
-    ],
+    // Rotating daily lines (deterministic by day, time-of-day aware) — a curated
+    // mini-precursor of Hero Voice (Phase 4). Every line passes the Section 9 lint.
+    dailyLines: {
+      morning: [
+        'A new day at home — small things count today.',
+        'Morning! One thing at a time, together.',
+        'Whatever today brings, it counts here.',
+        'Small starts make good days.',
+        'A calm start — the little jobs matter too.',
+        'Today is a team sport 💛',
+      ],
+      afternoon: [
+        'Midday already — everything so far counted.',
+        'A good afternoon for one small thing.',
+        'The day is rolling — nice work keeping it going.',
+        'Afternoon check-in: it all adds up.',
+      ],
+      evening: [
+        'Evenings count too — gently does it.',
+        'Winding down? Whatever got done today mattered.',
+        'The quiet end of the day — well held.',
+        'Rest is part of running a home, too.',
+      ],
+    },
+    weekSoFarHeader: 'This week so far',
+    weekSoFarSub: 'It all adds up 💛',
+    weekSoFarCta: 'See your week →',
     affirmTitle: 'Small shifts. Big impact.',
     affirmSub: 'Thanks for showing up for the team.',
     addTaskSub: 'Even a 5-minute task counts',
     emptyToday: 'Nothing logged yet today — even a 5-minute task counts.',
     addTaskCta: 'Add task',
+  },
+  photo: {
+    title: 'Update photo',
+    camera: 'Take a photo',
+    library: 'Choose from library',
+    cancel: 'Cancel',
   },
   addTask: {
     screenTitle: 'Add a task',
@@ -43,6 +71,7 @@ export const copy = {
     custom: 'Custom',
     whoPrompt: 'Who did it?',
     valuePreview: (cur: string, n: number) => `Estimated value: ${cur}${n}`,
+    valueInvaluable: 'Real value: invaluable 💛',
     valuePreviewSub: 'Based on your household rates',
     whenPrompt: 'When?',
     dayToday: 'Today',
@@ -75,6 +104,10 @@ export const copy = {
     deltaSame: 'About the same as last week',
     mentalLoadHeader: 'Mental load',
     mentalLoadSub: 'Planning, remembering, and emotional support — real work, often invisible.',
+    donutHeader: 'Top categories this week',
+    donutCenterSub: 'total',
+    donutOther: 'Everything else',
+    mentalLoadInvaluable: 'Some work can be estimated. Some can only be appreciated 💛',
     sparseWeek: 'A quieter week on record — log as much or as little as helps.',
   },
   settings: {
@@ -85,6 +118,7 @@ export const copy = {
       "Some families prefer hours only. Value disappears from every screen instantly — your data isn't deleted.",
     currencyTitle: 'Currency',
     membersTitle: 'Household members',
+    editPhoto: 'Edit photo',
     metricsTitle: 'Logging speed (dev metric)',
     resetCta: 'Reset local data',
     resetConfirm: 'Tap again to confirm — this clears local demo data on this device only.',
@@ -124,3 +158,13 @@ export const copy = {
 export const currencySymbol: Record<string, string> = {
   AED: 'AED ', USD: '$', EUR: '€', GBP: '£',
 };
+
+// Deterministic daily greeting line: same line for the whole household all day,
+// rotates with the calendar, varies by time of day.
+export function dailyLine(): string {
+  const h = new Date().getHours();
+  const period = h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
+  const lines = copy.today.dailyLines[period];
+  const day = Math.floor(Date.now() / 86400000);
+  return lines[day % lines.length];
+}

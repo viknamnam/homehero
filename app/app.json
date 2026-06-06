@@ -7,9 +7,25 @@
     "scheme": "homehero",
     "userInterfaceStyle": "light",
     "backgroundColor": "#FAF6F0",
-    "splash": { "backgroundColor": "#FAF6F0" },
-    "ios": { "supportsTablet": false, "bundleIdentifier": "com.homehero.app" },
-    "android": { "package": "com.homehero.app", "adaptiveIcon": { "backgroundColor": "#FAF6F0" } },
-    "web": { "bundler": "metro" }
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF6F0"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.homehero.app"
+    },
+    "android": {
+      "package": "com.homehero.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FAF6F0"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "icon": "./assets/icon.png"
   }
 }

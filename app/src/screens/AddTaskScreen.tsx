@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import {
   Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
-import { CATEGORIES, Category, CategoryKey } from '../constants/categories';
+import { CATEGORIES, Category, CategoryKey, categoryByKey } from '../constants/categories';
 import { copy, currencySymbol } from '../copy/strings';
 import { useHousehold, Task } from '../store/HouseholdStore';
 import { Avatar, Chip, PrimaryButton } from '../components/ui';
@@ -100,7 +100,7 @@ export default function AddTaskScreen({ onDone, editTask }: {
   const CatChip = ({ c }: { c: Category }) => (
     <Chip
       label={c.name}
-      icon={c.icon}
+      iconName={c.icon}
       tint={c.colour}
       selected={categoryKey === c.key}
       onPress={() => setCategoryKey(c.key)}
@@ -172,7 +172,7 @@ export default function AddTaskScreen({ onDone, editTask }: {
               style={{ alignItems: 'center', marginRight: spacing.l }}
               accessibilityRole="button"
             >
-              <Avatar name={m.name} colour={m.colour} size={44} selected={memberId === m.id} />
+              <Avatar name={m.name} colour={m.colour} size={44} selected={memberId === m.id} avatarUrl={m.avatarUrl} />
               <Text style={[type.caption, { marginTop: spacing.xs }]}>{m.name}</Text>
             </Pressable>
           ))}
@@ -209,9 +209,16 @@ export default function AddTaskScreen({ onDone, editTask }: {
       {/* Sticky footer: Save is ALWAYS one thumb-reach away — never scroll to finish */}
       <View style={styles.footer}>
         {!state.hideMoney && categoryKey ? (
-          <Text style={[type.caption, { textAlign: 'center', marginBottom: spacing.s }]}>
-            {copy.addTask.valuePreview(currencySymbol[state.currency] ?? '', value)}
-          </Text>
+          <View style={{ marginBottom: spacing.s }}>
+            <Text style={[type.caption, { textAlign: 'center' }]}>
+              {copy.addTask.valuePreview(currencySymbol[state.currency] ?? '', value)}
+            </Text>
+            {categoryByKey(categoryKey).mentalLoad && (
+              <Text style={[type.caption, { textAlign: 'center', color: colors.sageDeep, marginTop: 2 }]}>
+                {copy.addTask.valueInvaluable}
+              </Text>
+            )}
+          </View>
         ) : null}
         <PrimaryButton
           label={isEdit ? copy.addTask.editCta : copy.addTask.saveCta}

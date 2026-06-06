@@ -11,6 +11,7 @@ export interface Member {
   name: string;
   colour: string;
   linked?: boolean;      // has an auth account (cloud mode)
+  avatarUrl?: string | null; // signed URL to a household-scoped photo (refreshed on pull)
 }
 
 export interface Task {
@@ -101,6 +102,7 @@ type Action =
   | { type: 'SET_RATE'; key: CategoryKey; rate: number }
   | { type: 'RECORD_LOG_MS'; ms: number }
   | { type: 'RESET_LOG_MS' }
+  | { type: 'SET_MEMBER_AVATAR'; memberId: string; avatarUrl: string }
   | { type: 'ENQUEUE'; op: PendingOp }
   | { type: 'DEQUEUE'; opIds: string[] }
   | { type: 'RELINK_MEMBERS'; idMap: Record<string, string>; members: Member[]; meId: string }
@@ -141,6 +143,12 @@ function reducer(state: HouseholdState, action: Action): HouseholdState {
       return { ...state, logDurationsMs: [action.ms, ...state.logDurationsMs].slice(0, 20) };
     case 'RESET_LOG_MS':
       return { ...state, logDurationsMs: [] };
+    case 'SET_MEMBER_AVATAR':
+      return {
+        ...state,
+        members: state.members.map((m) =>
+          m.id === action.memberId ? { ...m, avatarUrl: action.avatarUrl } : m),
+      };
     case 'ENQUEUE': {
       // collapse duplicate ops targeting the same record
       const dup = (o: PendingOp) =>

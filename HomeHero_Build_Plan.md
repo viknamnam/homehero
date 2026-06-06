@@ -69,7 +69,7 @@ Legend: `[ ]` not started · `[x]` done · `[~]` in progress (edit manually) · 
 
 ### Phase 0 exit criteria (go/no-go)
 
-- [ ] Prototype log flow tested at <10s with real users
+- [~] Prototype log flow tested at <10s with real users (founder on-device: **7.2s median** after speed pass; household validation pending)
 - [ ] Balance screen copy validated with at least one couple (no "judgement" reaction)
 - [x] Stack, schema, and category list locked
 - [ ] Copy library v1 approved
@@ -117,7 +117,7 @@ Legend: `[ ]` not started · `[x]` done · `[~]` in progress (edit manually) · 
 
 ### Phase 1 exit criteria (go/no-go)
 
-- [ ] 🔒 Median real-app log time **<10 seconds**
+- [~] 🔒 Median real-app log time **<10 seconds** (founder: 7.2s — alpha-household confirmation pending)
 - [ ] ≥50% of alpha households still logging in week 2
 - [ ] Zero data-loss incidents
 - [ ] Qualitative: at least 3 households say the week summary "showed them something they didn't realise"
@@ -323,7 +323,7 @@ Legend: `[ ]` not started · `[x]` done · `[~]` in progress (edit manually) · 
 
 | Metric | Target | Phase tracked from | Status |
 |---|---|---|---|
-| Median time to log simple task | <10s | 1 | [ ] |
+| Median time to log simple task | <10s | 1 | [~] founder 7.2s |
 | Activation: signup → 5 tasks logged | >60% | 2 | [ ] |
 | Week-4 household retention | >35% | 2 | [ ] |
 | Thanks sent / active household / week | establish baseline, grow | 2 | [ ] |
@@ -397,7 +397,8 @@ Use this section to record discovered gaps, decisions, and deferred items so not
 | 18 | 05 Jun 2026 | Staging Supabase region landed in Tokyo (ap-northeast-1) | Fine for staging; create the **prod** project in eu-central-1 (Frankfurt) for Dubai latency. Never share staging/prod databases | 3 | Decided |
 | 19 | 05 Jun 2026 | Security: Postgres views bypass RLS unless security_invoker is set — found during sync build | Fixed in migration 0003 for all three views; add "views respect RLS" assertion to the cross-household test suite | 1 | Resolved |
 | 20 | 05 Jun 2026 | "Invaluable Work" layer adopted from feature brief: emotional/mental-load tasks show estimate + "Invaluable" label rather than pure money | v1 static label → Phase 1 build (tested in Phase 0 Segment E); Home Value framing rule → Phase 2; rotating message pack → Phase 4 Hero Voice. **Also resolves the emotional-support pricing question:** rate multiplier stays modest (1.0–1.1) — the "Invaluable" frame carries the meaning, not the number. Mitigates Dubai value-reads-low risk (#12) | 0, 1, 2, 4 | Decided |
-| 21 | | | | | |
+| 21 | 05 Jun 2026 | Photo avatars shipped (polish pack 2): private household-scoped Storage bucket, signed URLs, own-photo upload from Settings | **Adults only for alpha.** Children's photos are a Phase 3 compliance item (children's-privacy review scrutinizes kids' images): child avatars stay parent-uploaded, parent-controlled, and default to illustrated style per Kids View mockup | 1, 3 | Decided |
+| 22 | | | | | |
 
 ---
 

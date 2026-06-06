@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Animated, Image, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Icon, IconName } from './icons';
 import { colors, fonts, radius, shadow, spacing, type } from '../theme/tokens';
 
 const shadowCardCompat = shadow.card;
@@ -8,20 +9,22 @@ export function Card({ children, style }: { children: React.ReactNode; style?: V
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
-// Pastel circle behind an emoji icon — the mockup's signature card element
-export function IconBadge({ icon, tint, size = 40 }: { icon: string; tint: string; size?: number }) {
+// Pastel circle behind a line icon — the mockup's signature card element
+export function IconBadge({ icon, tint, size = 40, color = colors.charcoal }: {
+  icon: IconName; tint: string; size?: number; color?: string;
+}) {
   return (
     <View style={{
       width: size, height: size, borderRadius: size / 2,
       backgroundColor: tint, alignItems: 'center', justifyContent: 'center',
     }}>
-      <Text style={{ fontSize: size * 0.5 }}>{icon}</Text>
+      <Icon name={icon} size={size * 0.5} color={color} strokeWidth={2.2} />
     </View>
   );
 }
 
-export function Chip({ label, icon, selected, onPress, tint }: {
-  label: string; icon?: string; selected?: boolean; onPress?: () => void; tint?: string;
+export function Chip({ label, iconName, selected, onPress, tint }: {
+  label: string; iconName?: IconName; selected?: boolean; onPress?: () => void; tint?: string;
 }) {
   return (
     <Pressable
@@ -34,9 +37,8 @@ export function Chip({ label, icon, selected, onPress, tint }: {
         selected && styles.chipSelected,
       ]}
     >
-      <Text style={[type.label, { color: colors.charcoal }]}>
-        {icon ? `${icon} ` : ''}{label}
-      </Text>
+      {iconName ? <View style={{ marginRight: 6 }}><Icon name={iconName} size={15} /></View> : null}
+      <Text style={[type.label, { color: colors.charcoal }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -59,16 +61,19 @@ export function PrimaryButton({ label, sub, onPress, disabled }: {
   );
 }
 
-export function Avatar({ name, colour, size = 40, selected }: {
-  name: string; colour: string; size?: number; selected?: boolean;
+export function Avatar({ name, colour, size = 40, selected, avatarUrl }: {
+  name: string; colour: string; size?: number; selected?: boolean; avatarUrl?: string | null;
 }) {
   const initial = name.trim().charAt(0).toUpperCase();
+  const frame = {
+    width: size, height: size, borderRadius: size / 2,
+    borderWidth: selected ? 3 : 0, borderColor: colors.charcoal,
+  } as const;
+  if (avatarUrl) {
+    return <Image source={{ uri: avatarUrl }} style={[frame, { backgroundColor: colour }]} />;
+  }
   return (
-    <View style={{
-      width: size, height: size, borderRadius: size / 2,
-      backgroundColor: colour, alignItems: 'center', justifyContent: 'center',
-      borderWidth: selected ? 3 : 0, borderColor: colors.charcoal,
-    }}>
+    <View style={[frame, { backgroundColor: colour, alignItems: 'center', justifyContent: 'center' }]}>
       <Text style={[type.h2, { color: colors.charcoal }]}>{initial}</Text>
     </View>
   );
@@ -76,7 +81,7 @@ export function Avatar({ name, colour, size = 40, selected }: {
 
 // Mockup-style stat card: icon badge + label, big number, small caption underneath
 export function StatCard({ icon, iconTint, label, value, sub, style }: {
-  icon: string; iconTint: string; label: string; value: string; sub?: string; style?: ViewStyle;
+  icon: IconName; iconTint: string; label: string; value: string; sub?: string; style?: ViewStyle;
 }) {
   return (
     <Card style={StyleSheet.flatten([{ paddingVertical: spacing.l }, style])}>
@@ -95,7 +100,7 @@ export function StatCard({ icon, iconTint, label, value, sub, style }: {
 // Compact variant — the refined mockup's 4-up row: icon top, tiny label, number.
 // Density rules: shrink the CARD, never the tap target or below 13px text.
 export function StatCardCompact({ icon, iconTint, label, value, sub, tint }: {
-  icon: string; iconTint: string; label: string; value: string; sub?: string; tint?: string;
+  icon: IconName; iconTint: string; label: string; value: string; sub?: string; tint?: string;
 }) {
   return (
     <View style={[compactStyles.card, tint ? { backgroundColor: tint } : null]}>
@@ -159,6 +164,8 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.l,
     paddingVertical: spacing.s + 2,
     borderRadius: radius.chip,
