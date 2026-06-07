@@ -15,6 +15,7 @@ import {
 } from '../store/HouseholdStore';
 import { CATEGORIES, CategoryKey } from '../constants/categories';
 import { personColours } from '../theme/tokens';
+import { AVATAR_SCHEME } from '../components/HeroAvatars';
 
 interface SyncApi {
   cloudEnabled: boolean;
@@ -34,6 +35,10 @@ interface SyncApi {
   syncNow: () => Promise<void>;
   /** Upload my profile photo to household-scoped storage; updates members.avatar. */
   uploadAvatar: (localUri: string) => Promise<boolean>;
+  /** Pick a built-in hero face: stored as avatar://<key> in members.avatar (no migration). */
+  setHeroAvatar: (key: string, memberId?: string) => Promise<boolean>;
+  /** Create a child profile (Kids Mode). Cloud households must be online — see Gaps register. */
+  addChildMember: (name: string) => Promise<boolean>;
   /** Delete the household everywhere (cloud cascade) and reset this device. */
   deleteHousehold: () => Promise<boolean>;
 }
@@ -104,7 +109,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
     const [{ data: mems, error: e3 }, { data: rateRows, error: e4 }, { data: taskRows, error: e5 }, { data: apprRows, error: e6 }, { data: planRows, error: e7 }] =
       await Promise.all([
-        supabase.from('members').select('id,display_name,colour,auth_user_id,avatar').eq('household_id', householdId),
+        supabase.from('members').select('id,display_name,colour,role,auth_user_id,avatar').eq('household_id', householdId),
         supabase.from('rates').select('category_id,hourly_rate').eq('household_id', householdId),
         supabase.from('tasks_visible').select('*').eq('household_id', householdId)
           .order('occurred_at', { ascending: false }).limit(500),
@@ -122,12 +127,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
     const members: Member[] = mems.map((m: any) => ({
       id: m.id, name: m.display_name, colour: m.colour, linked: !!m.auth_user_id,
+      role: m.role === 'child' ? 'child' as const : 'adult' as const,
     }));
 
     // Resolve photo avatars: storage paths -> signed URLs (private bucket, 7-day expiry,
     // refreshed on every pull). Failures here never block the pull.
     try {
-      const withAvatar = mems.filter((m: any) => m.avatar);
+      // Hero faces (avatar://<key>) are not storage paths — pass them through as-is
+      const withAvatar = mems.filter((m: any) => m.avatar && !String(m.avatar).startsWith(AVATAR_SCHEME));
       if (withAvatar.length) {
         const { data: signed } = await supabase.storage
           .from('avatars')
@@ -137,9 +144,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         );
         members.forEach((mm, i) => {
           const path = (mems[i] as any).avatar as string | null;
-          if (path) mm.avatarUrl = urlByPath.get(path) ?? null;
+          if (path && !path.startsWith(AVATAR_SCHEME)) mm.avatarUrl = urlByPath.get(path) ?? null;
         });
       }
+      members.forEach((mm, i) => {
+        const path = (mems[i] as any).avatar as string | null;
+        if (path && path.startsWith(AVATAR_SCHEME)) mm.avatarUrl = path;
+      });
     } catch { /* avatars are decorative — never fail a pull over them */ }
 
     const rates = Object.fromEntries(
@@ -406,7 +417,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       code,
       household_id: s.cloud.householdId,
       role: 'adult',
-      expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+      // 48h: long enough to invite your partner tonight, short enough that a
+      // leaked code goes stale fast (codes are also single-use server-side)
+      expires_at: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
     });
     if (error) { fail(error); return null; }
     return code;
@@ -468,6 +481,49 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     } finally { setBusy(false); }
   }, [session, dispatch]);
 
+  const setHeroAvatar = useCallback(async (key: string, memberId?: string): Promise<boolean> => {
+    const s = stateRef.current;
+    const target = memberId ?? s.meId;
+    if (!target) return false;
+    const url = AVATAR_SCHEME + key;
+    // Local first — hero faces work fully offline (no storage upload involved).
+    // Adults may set a CHILD's avatar (kids never get camera/photo access);
+    // RLS mem_update permits household-scoped member updates.
+    dispatch({ type: 'SET_MEMBER_AVATAR', memberId: target, avatarUrl: url });
+    if (!supabase || !session || !s.cloud.householdId) return true;
+    try {
+      const { error } = await supabase.from('members').update({ avatar: url }).eq('id', target);
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      return fail(e); // pull will reconcile; the local pick stays visible meanwhile
+    }
+  }, [session, dispatch]);
+
+  // Kid profiles: no email, no auth account — a member row with role 'child',
+  // device-shared with an adult. Cloud households must be ONLINE to add one
+  // (a local-only insert would be wiped by the next pull); fully-local
+  // households add children offline freely.
+  const addChildMember = useCallback(async (name: string): Promise<boolean> => {
+    const s = stateRef.current;
+    const trimmed = name.trim();
+    if (!trimmed) return false;
+    const colour = personColours[s.members.length % personColours.length];
+    if (!s.cloud.householdId) {
+      dispatch({ type: 'ADD_MEMBER', member: { id: uid(), name: trimmed, colour, role: 'child' } });
+      return true;
+    }
+    if (!supabase || !session) return fail(new Error('Connect to the internet to add a family member.'));
+    try {
+      const { data, error } = await supabase.from('members')
+        .insert({ household_id: s.cloud.householdId, display_name: trimmed, colour, role: 'child' })
+        .select('id').single();
+      if (error || !data) throw error ?? new Error('could not create profile');
+      dispatch({ type: 'ADD_MEMBER', member: { id: data.id, name: trimmed, colour, role: 'child' } });
+      return true;
+    } catch (e) { return fail(e); }
+  }, [session, dispatch]);
+
   const syncNow = useCallback(async () => {
     setBusy(true); setLastError(null);
     try {
@@ -483,7 +539,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     cloudEnabled: isCloudEnabled,
     session, busy, lastError,
     sendCode, verifyCode, signOut,
-    pullMyHousehold, uploadHousehold, joinWithInvite, createInvite, syncNow, uploadAvatar, deleteHousehold,
+    pullMyHousehold, uploadHousehold, joinWithInvite, createInvite, syncNow, uploadAvatar, setHeroAvatar, addChildMember, deleteHousehold,
   };
 
   return <SyncContext.Provider value={api}>{children}</SyncContext.Provider>;

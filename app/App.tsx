@@ -15,6 +15,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import ComingSoonScreen from './src/screens/ComingSoonScreen';
 import HomeValueScreen from './src/screens/HomeValueScreen';
 import ThanksScreen from './src/screens/ThanksScreen';
+import KidModeScreen from './src/screens/KidModeScreen';
 import { FLAGS } from './src/constants/flags';
 import { Toast } from './src/components/ui';
 import DoodleBackground from './src/components/DoodleBackground';
@@ -34,6 +35,7 @@ function Shell() {
   const [adding, setAdding] = useState(false);
   const [planPrefill, setPlanPrefill] = useState<PlanPrefill | null>(null);
   const [quickLogging, setQuickLogging] = useState(false);
+  const [kidModeChildId, setKidModeChildId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Task | null>(null);
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
@@ -78,7 +80,7 @@ function Shell() {
       {tab === 'week' && <WeekScreen />}
       {tab === 'homeValue' && (FLAGS.homeValue ? <HomeValueScreen onPlan={() => setTab('today')} /> : <ComingSoonScreen kind="homeValue" />)}
       {tab === 'thanks' && (FLAGS.thanks ? <ThanksScreen onToast={showToast} /> : <ComingSoonScreen kind="thanks" />)}
-      {tab === 'settings' && <SettingsScreen />}
+      {tab === 'settings' && <SettingsScreen onOpenKidMode={FLAGS.kidsMode ? (id) => setKidModeChildId(id) : undefined} />}
 
       {/* Settings gear — top-right on every main screen */}
       {!overlayOpen && (
@@ -119,6 +121,12 @@ function Shell() {
           <TabButton label="Home Value" icon="dollar" active={tab === 'homeValue'} onPress={() => setTab('homeValue')} />
           <TabButton label="Thanks" icon="heart" active={tab === 'thanks'} onPress={() => setTab('thanks')} />
         </View>
+      )}
+
+      {/* Kids Mode covers EVERYTHING (tabs, gear, overlays) — its own world,
+          exited only via the hold-to-exit control inside */}
+      {FLAGS.kidsMode && kidModeChildId && (
+        <KidModeScreen childId={kidModeChildId} onExit={() => setKidModeChildId(null)} />
       )}
 
       <Toast message={toast} visible={toastVisible} />

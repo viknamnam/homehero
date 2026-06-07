@@ -11,6 +11,7 @@ export interface Member {
   id: string;            // cloud uuid once synced; local uid before
   name: string;
   colour: string;
+  role?: 'adult' | 'child'; // undefined = adult (pre-Kids-Mode data)
   linked?: boolean;      // has an auth account (cloud mode)
   avatarUrl?: string | null; // signed URL to a household-scoped photo (refreshed on pull)
 }
@@ -143,6 +144,7 @@ type Action =
   | { type: 'RECORD_LOG_MS'; ms: number }
   | { type: 'RESET_LOG_MS' }
   | { type: 'SET_MEMBER_AVATAR'; memberId: string; avatarUrl: string }
+  | { type: 'ADD_MEMBER'; member: Member }
   | { type: 'ADD_THANKS'; thanks: Thanks }
   | { type: 'DELETE_THANKS'; id: string }
   | { type: 'ADD_PLAN'; plan: PlannedTask }
@@ -190,6 +192,8 @@ function reducer(state: HouseholdState, action: Action): HouseholdState {
       return { ...state, logDurationsMs: [action.ms, ...state.logDurationsMs].slice(0, 20) };
     case 'RESET_LOG_MS':
       return { ...state, logDurationsMs: [] };
+    case 'ADD_MEMBER':
+      return { ...state, members: [...state.members, action.member] };
     case 'SET_MEMBER_AVATAR':
       return {
         ...state,

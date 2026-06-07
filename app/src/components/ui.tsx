@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Icon, IconName } from './icons';
+import { heroAvatarKey, heroAvatarSource, isHeroAvatar } from './HeroAvatars';
 import { colors, fonts, radius, shadow, spacing, type } from '../theme/tokens';
 
 const shadowCardCompat = shadow.card;
@@ -69,6 +70,15 @@ export function Avatar({ name, colour, size = 40, selected, avatarUrl }: {
     width: size, height: size, borderRadius: size / 2,
     borderWidth: selected ? 3 : 0, borderColor: colors.charcoal,
   } as const;
+  if (avatarUrl && isHeroAvatar(avatarUrl)) {
+    // Illustrated hero character; member identity colour stays as the ring/backing
+    return (
+      <Image
+        source={heroAvatarSource(heroAvatarKey(avatarUrl))}
+        style={[frame, { backgroundColor: colour }]}
+      />
+    );
+  }
   if (avatarUrl) {
     return <Image source={{ uri: avatarUrl }} style={[frame, { backgroundColor: colour }]} />;
   }

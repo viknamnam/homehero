@@ -1,6 +1,6 @@
 // Supabase client. Session persists via AsyncStorage so sign-in survives restarts.
 import 'react-native-url-polyfill/auto';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
@@ -22,3 +22,14 @@ export const supabase: SupabaseClient | null =
     : null;
 
 export const isCloudEnabled = supabase !== null;
+
+// Keep the session fresh: run token auto-refresh while the app is foregrounded
+// (Supabase's recommended React Native wiring). Belt-and-braces for people who
+// reopen the app after long gaps — the stored refresh token signs them back in
+// silently instead of bouncing them to the code screen.
+if (supabase && Platform.OS !== 'web') {
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') supabase.auth.startAutoRefresh();
+    else supabase.auth.stopAutoRefresh();
+  });
+}

@@ -6,10 +6,12 @@ import { copy } from '../copy/strings';
 import { useHousehold } from '../store/HouseholdStore';
 import { useSync } from '../lib/sync';
 import { usePhotoPicker } from '../lib/usePhotoPicker';
+import { FLAGS } from '../constants/flags';
+import { HeroAvatarPicker } from '../components/HeroAvatars';
 import * as Clipboard from 'expo-clipboard';
 import { Avatar, Card, Chip, PrimaryButton } from '../components/ui';
 import { Icon } from '../components/icons';
-import { Header } from '../components/brand';
+import { Header, LogoLoader } from '../components/brand';
 import { colors, spacing, type } from '../theme/tokens';
 
 const CURRENCIES = ['AED', 'USD', 'EUR', 'GBP'];
@@ -20,6 +22,8 @@ function SyncCard() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
 
@@ -46,11 +50,22 @@ function SyncCard() {
                 onChangeText={setEmail}
               />
               <View style={{ marginTop: spacing.m }}>
-                <PrimaryButton
-                  label={copy.sync.sendCode}
-                  disabled={!email.includes('@')}
-                  onPress={async () => { if (await sync.sendCode(email)) setCodeSent(true); }}
-                />
+                {sending ? (
+                  <View style={{ alignItems: 'center', minHeight: 48, justifyContent: 'center' }}>
+                    <LogoLoader label={copy.sync.sendingCode} />
+                  </View>
+                ) : (
+                  <PrimaryButton
+                    label={copy.sync.sendCode}
+                    disabled={!email.includes('@')}
+                    onPress={async () => {
+                      setSending(true);
+                      const ok = await sync.sendCode(email);
+                      setSending(false);
+                      if (ok) setCodeSent(true);
+                    }}
+                  />
+                )}
               </View>
             </View>
           ) : (
@@ -65,16 +80,25 @@ function SyncCard() {
                 onChangeText={setCode}
               />
               <View style={{ marginTop: spacing.m }}>
-                <PrimaryButton
-                  label={copy.sync.verify}
-                  disabled={code.trim().length < 6}
-                  onPress={async () => {
-                    if (await sync.verifyCode(email, code)) {
-                      setCodeSent(false); setCode('');
-                      await sync.pullMyHousehold();
-                    }
-                  }}
-                />
+                {verifying ? (
+                  <View style={{ alignItems: 'center', minHeight: 48, justifyContent: 'center' }}>
+                    <LogoLoader label={copy.sync.verifying} />
+                  </View>
+                ) : (
+                  <PrimaryButton
+                    label={copy.sync.verify}
+                    disabled={code.trim().length < 6}
+                    onPress={async () => {
+                      setVerifying(true);
+                      const ok = await sync.verifyCode(email, code);
+                      if (ok) {
+                        setCodeSent(false); setCode('');
+                        await sync.pullMyHousehold();
+                      }
+                      setVerifying(false);
+                    }}
+                  />
+                )}
               </View>
             </View>
           )}
@@ -83,11 +107,13 @@ function SyncCard() {
         <View style={{ marginTop: spacing.m }}>
           <Text style={type.caption}>{copy.sync.uploadPrompt}</Text>
           <View style={{ marginTop: spacing.m }}>
-            <PrimaryButton
-              label={sync.busy ? '…' : copy.sync.uploadCta}
-              disabled={sync.busy}
-              onPress={() => sync.uploadHousehold()}
-            />
+            {sync.busy ? (
+              <View style={{ alignItems: 'center', minHeight: 48, justifyContent: 'center' }}>
+                <LogoLoader label={copy.sync.working} />
+              </View>
+            ) : (
+              <PrimaryButton label={copy.sync.uploadCta} onPress={() => sync.uploadHousehold()} />
+            )}
           </View>
         </View>
       ) : (
@@ -150,13 +176,25 @@ function SyncCard() {
   );
 }
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (childId: string) => void } = {}) {
   const { state, setHideMoney, setCurrency, setRate, reset, resetLogMetric, setHeroStyle } = useHousehold();
   const [confirmingReset, setConfirmingReset] = useState(false);
   // Photo avatars: shared flow (camera or library) — see lib/usePhotoPicker
-  const { canEditPhoto, changeMyPhoto } = usePhotoPicker();
+  const { canEditPhoto, changeMyPhoto, avatarPickerVisible, closeAvatarPicker, pickHeroAvatar } = usePhotoPicker();
   const sync = useSync();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Kids Mode: add-child form + child-avatar picker target (avatars ONLY for kids — no camera)
+  const [addingChild, setAddingChild] = useState(false);
+  const [childName, setChildName] = useState('');
+  const [childError, setChildError] = useState(false);
+  const [childAvatarFor, setChildAvatarFor] = useState<string | null>(null);
+
+  const saveChild = async () => {
+    setChildError(false);
+    const ok = await sync.addChildMember(childName);
+    if (!ok) { setChildError(true); return; }
+    setChildName(''); setAddingChild(false);
+  };
 
   // Trust layer (build plan §13): your data is yours — take it or remove it.
   const exportData = async () => {
@@ -198,29 +236,70 @@ export default function SettingsScreen() {
 
       <Card style={{ marginTop: spacing.m }}>
         <Text style={type.h2}>{copy.settings.membersTitle}</Text>
-        <View style={{ flexDirection: 'row', marginTop: spacing.m }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.m }}>
           {state.members.map((m) => {
             const mine = m.id === state.meId;
+            const isChild = m.role === 'child';
             return (
-              <Pressable
-                key={m.id}
-                disabled={!(mine && canEditPhoto)}
-                onPress={changeMyPhoto}
-                style={{ alignItems: 'center', marginRight: spacing.l }}
-                accessibilityLabel={mine && canEditPhoto ? copy.settings.editPhoto : m.name}
-              >
-                <Avatar name={m.name} colour={m.colour} size={48} avatarUrl={m.avatarUrl} />
-                <Text style={[type.caption, { marginTop: spacing.xs }]}>{m.name}</Text>
-                {mine && canEditPhoto && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
-                    <Icon name="camera" size={11} color={colors.charcoalSoft} />
-                    <Text style={[type.caption, { fontSize: 11, marginLeft: 3 }]}>{copy.settings.editPhoto}</Text>
-                  </View>
+              <View key={m.id} style={{ alignItems: 'center', marginRight: spacing.l, marginBottom: spacing.m }}>
+                <Pressable
+                  disabled={!(mine && canEditPhoto) && !isChild}
+                  // Children: hero-avatar picker ONLY — never the camera/photo sheet
+                  onPress={isChild ? () => setChildAvatarFor(m.id) : changeMyPhoto}
+                  style={{ alignItems: 'center' }}
+                  accessibilityLabel={isChild ? copy.photo.heroTitle : mine && canEditPhoto ? copy.settings.editPhoto : m.name}
+                >
+                  <Avatar name={m.name} colour={m.colour} size={48} avatarUrl={m.avatarUrl} />
+                  <Text style={[type.caption, { marginTop: spacing.xs }]}>
+                    {m.name}{isChild ? ` · ${copy.settings.kidBadge}` : ''}
+                  </Text>
+                  {mine && canEditPhoto && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
+                      <Icon name="camera" size={11} color={colors.charcoalSoft} />
+                      <Text style={[type.caption, { fontSize: 11, marginLeft: 3 }]}>{copy.settings.editPhoto}</Text>
+                    </View>
+                  )}
+                </Pressable>
+                {isChild && onOpenKidMode && (
+                  <Pressable onPress={() => onOpenKidMode(m.id)} hitSlop={8} style={{ marginTop: 2, minHeight: 28, justifyContent: 'center' }}>
+                    <Text style={[type.caption, { fontSize: 11, color: colors.sageDeep }]}>{copy.settings.openKidMode}</Text>
+                  </Pressable>
                 )}
-              </Pressable>
+              </View>
             );
           })}
         </View>
+        {FLAGS.kidsMode && (
+          !addingChild ? (
+            <Pressable onPress={() => setAddingChild(true)} style={{ marginTop: spacing.xs, minHeight: 36, justifyContent: 'center' }}>
+              <Text style={[type.label, { color: colors.sageDeep }]}>{copy.settings.addChildCta}</Text>
+            </Pressable>
+          ) : (
+            <View style={{ marginTop: spacing.s }}>
+              <Text style={type.caption}>{copy.settings.addChildHint}</Text>
+              <TextInput
+                style={styles.syncInput}
+                value={childName}
+                onChangeText={setChildName}
+                placeholder="e.g. Ava"
+                placeholderTextColor={colors.charcoalSoft}
+              />
+              {childError && (
+                <Text style={[type.caption, { color: colors.coralDeep, marginTop: spacing.xs }]}>
+                  {copy.settings.addChildOffline}
+                </Text>
+              )}
+              <View style={{ flexDirection: 'row', marginTop: spacing.s, alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <PrimaryButton label={copy.settings.addChildSave} onPress={() => void saveChild()} disabled={!childName.trim()} />
+                </View>
+                <Pressable onPress={() => { setAddingChild(false); setChildError(false); }} style={{ marginLeft: spacing.m, minHeight: 44, justifyContent: 'center' }}>
+                  <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.photo.cancel}</Text>
+                </Pressable>
+              </View>
+            </View>
+          )
+        )}
       </Card>
 
       <Card style={{ marginTop: spacing.m }}>
@@ -322,6 +401,12 @@ export default function SettingsScreen() {
         </Text>
       </Pressable>
       <View style={{ height: 120 }} />
+      <HeroAvatarPicker visible={avatarPickerVisible} onPick={pickHeroAvatar} onClose={closeAvatarPicker} />
+      <HeroAvatarPicker
+        visible={childAvatarFor !== null}
+        onPick={(key) => { const id = childAvatarFor; setChildAvatarFor(null); if (id) void sync.setHeroAvatar(key, id); }}
+        onClose={() => setChildAvatarFor(null)}
+      />
     </ScrollView>
   );
 }

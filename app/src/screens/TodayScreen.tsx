@@ -7,6 +7,7 @@ import { fmtHM, inWeekOf, isSameDay, startOfWeek, useHousehold, Task } from '../
 import { AffirmationCard, Avatar, Card, Chip, IconBadge, PrimaryButton, StatCardCompact } from '../components/ui';
 import { usePhotoPicker } from '../lib/usePhotoPicker';
 import { PlanCard } from '../components/PlanCard';
+import { HeroAvatarPicker } from '../components/HeroAvatars';
 import { FLAGS } from '../constants/flags';
 import { Header } from '../components/brand';
 import { colors, fonts, spacing, type } from '../theme/tokens';
@@ -55,7 +56,7 @@ export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan }: {
 }) {
   const { state, deleteTask } = useHousehold();
   const me = state.members.find((m) => m.id === state.meId);
-  const { canEditPhoto, changeMyPhoto } = usePhotoPicker();
+  const { canEditPhoto, changeMyPhoto, avatarPickerVisible, closeAvatarPicker, pickHeroAvatar } = usePhotoPicker();
 
   const todayTasks = useMemo(() => {
     const now = new Date();
@@ -210,6 +211,7 @@ export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan }: {
           </View>
         }
       />
+      <HeroAvatarPicker visible={avatarPickerVisible} onPick={pickHeroAvatar} onClose={closeAvatarPicker} />
     </View>
   );
 }
