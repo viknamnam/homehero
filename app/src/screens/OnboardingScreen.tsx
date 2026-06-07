@@ -5,19 +5,25 @@ import {
 import { copy } from '../copy/strings';
 import { useHousehold } from '../store/HouseholdStore';
 import { useSync } from '../lib/sync';
-import { Chip, PrimaryButton } from '../components/ui';
+import { Chip, PrimaryButton, BusyButton } from '../components/ui';
 import { useInsets } from '../lib/insets';
+import { Linking } from 'react-native';
+import { codeFromUrl } from '../lib/joinLink';
 import { Logo, Wordmark } from '../components/brand';
 import { colors, spacing, type } from '../theme/tokens';
 
 const CURRENCIES = ['AED', 'USD', 'EUR', 'GBP'];
 
-function JoinFlow() {
+function JoinFlow({ initialCode }: { initialCode?: string | null }) {
   const sync = useSync();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
+
+  React.useEffect(() => {
+    if (initialCode) setInviteCode(initialCode);
+  }, [initialCode]);
   const [myName, setMyName] = useState('');
 
   return (
@@ -37,11 +43,12 @@ function JoinFlow() {
               onChangeText={setEmail}
             />
             <View style={{ marginTop: spacing.l }}>
-              <PrimaryButton
+              <BusyButton
                 label={copy.sync.sendCode}
+                busyLabel={copy.sync.sendingCode}
                 disabled={!email.includes('@')}
                 onPress={async () => { if (await sync.sendCode(email)) setCodeSent(true); }}
-              />
+                />
             </View>
           </View>
         ) : (
@@ -56,8 +63,9 @@ function JoinFlow() {
               onChangeText={setCode}
             />
             <View style={{ marginTop: spacing.l }}>
-              <PrimaryButton
+              <BusyButton
                 label={copy.sync.verify}
+                busyLabel={copy.sync.verifying}
                 disabled={code.trim().length < 6}
                 onPress={async () => {
                   if (await sync.verifyCode(email, code)) {
@@ -111,6 +119,20 @@ export default function OnboardingScreen() {
   const { createHousehold } = useHousehold();
   const { cloudEnabled } = useSync();
   const [mode, setMode] = useState<'create' | 'join'>('create');
+  const [deepCode, setDeepCode] = useState<string | null>(null);
+
+  // Deep-linked invite (#65): scanned QR or tapped heronest.app/join/CODE —
+  // jump to the join path with the code prefilled. Email sign-in still happens
+  // first; the link only removes the typing.
+  React.useEffect(() => {
+    const apply = (url: string | null) => {
+      const code = url ? codeFromUrl(url) : null;
+      if (code) { setDeepCode(code); setMode('join'); }
+    };
+    void Linking.getInitialURL().then(apply);
+    const sub = Linking.addEventListener('url', (e) => apply(e.url));
+    return () => sub.remove();
+  }, []);
   const [householdName, setHouseholdName] = useState('');
   const [myName, setMyName] = useState('');
   const [partnerName, setPartnerName] = useState('');
@@ -142,7 +164,7 @@ export default function OnboardingScreen() {
         )}
 
         {mode === 'join' ? (
-          <JoinFlow />
+          <JoinFlow initialCode={deepCode} />
         ) : (
         <View>
         <Text style={[type.h2, styles.section]}>{copy.onboarding.createHousehold}</Text>

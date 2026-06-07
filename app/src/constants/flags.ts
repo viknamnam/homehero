@@ -10,5 +10,6 @@ export const FLAGS = {
   doodles: true, // decorative pastel background marks (Jun 2026 design pass) — kill switch if it reads as noise
   voiceMic: true, // P4b in-app mic — UI also self-gates on native module presence (see lib/speech.ts)
   heroAvatars: true, // illustrated avatar faces (privacy-friendly photo alternative; Kids Mode inherits)
+  notifications: true, // #61: thanks-push + weekly digest ONLY (UI auto-hides until the expo-notifications rebuild)
   kidsMode: true, // P3: kid profiles + missions/points/streaks/badges view — avatars only, never money/comparisons
 } as const;

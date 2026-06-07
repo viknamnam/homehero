@@ -58,7 +58,7 @@ export default function ThanksScreen({ onToast }: { onToast?: (m: string) => voi
                   style={{ alignItems: 'center', marginRight: spacing.l }}
                   accessibilityRole="button"
                 >
-                  <Avatar name={m.name} colour={m.colour} size={48} selected={toId === m.id} avatarUrl={m.avatarUrl} />
+                  <Avatar name={m.name} colour={m.colour} size={48} selected={toId === m.id} avatarUrl={m.avatarUrl} memberId={m.id} />
                   <Text style={[type.caption, { marginTop: spacing.xs }]}>{m.name}</Text>
                 </Pressable>
               ))}
@@ -107,7 +107,7 @@ export default function ThanksScreen({ onToast }: { onToast?: (m: string) => voi
         ) : (
           weekThanks.map((t) => (
             <Card key={t.id} style={styles.winRow}>
-              <Avatar name={memberName(t.toMemberId)} colour={memberColour(t.toMemberId)} size={36} avatarUrl={memberAvatar(t.toMemberId)} />
+              <Avatar name={memberName(t.toMemberId)} colour={memberColour(t.toMemberId)} size={36} avatarUrl={memberAvatar(t.toMemberId)} memberId={t.toMemberId} />
               <View style={{ flex: 1, marginLeft: spacing.m }}>
                 <Text style={type.body}>
                   {copy.thanks.winLine(memberName(t.fromMemberId), memberName(t.toMemberId))}

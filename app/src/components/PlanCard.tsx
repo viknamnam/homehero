@@ -108,7 +108,7 @@ export function PlanCard({ onLogPlan }: {
             <Chip label={copy.plan.anyone} selected={who === null} onPress={() => setWho(null)} />
             {state.members.map((m) => (
               <Pressable key={m.id} onPress={() => setWho(m.id)} style={{ marginRight: spacing.m }}>
-                <Avatar name={m.name} colour={m.colour} size={34} selected={who === m.id} avatarUrl={m.avatarUrl} />
+                <Avatar name={m.name} colour={m.colour} size={34} selected={who === m.id} avatarUrl={m.avatarUrl} memberId={m.id} />
               </Pressable>
             ))}
           </View>

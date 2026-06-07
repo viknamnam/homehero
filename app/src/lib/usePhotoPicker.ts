@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { copy } from '../copy/strings';
 import { FLAGS } from '../constants/flags';
@@ -16,6 +16,7 @@ export function usePhotoPicker() {
   const sync = useSync();
   const { state } = useHousehold();
   const [avatarPickerVisible, setAvatarPickerVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const canUploadPhoto = !!state.cloud.householdId && !!sync.session;
   const canPickHero = FLAGS.heroAvatars && !!state.meId;
@@ -43,20 +44,21 @@ export function usePhotoPicker() {
 
   const changeMyPhoto = () => {
     if (!canEditPhoto) return;
-    // Web: Alert option lists don't render — go straight to the best available path
+    // Web: modal sheets work, but library upload is the common case — keep direct
     if (Platform.OS === 'web') {
       if (canUploadPhoto) { void fromLibrary(); } else { setAvatarPickerVisible(true); }
       return;
     }
     // No cloud yet: hero faces are the only option — skip the chooser
     if (!canUploadPhoto) { setAvatarPickerVisible(true); return; }
-    Alert.alert(copy.photo.title, undefined, [
-      { text: copy.photo.camera, onPress: () => void fromCamera() },
-      { text: copy.photo.library, onPress: () => void fromLibrary() },
-      ...(canPickHero ? [{ text: copy.photo.heroOption, onPress: () => setAvatarPickerVisible(true) }] : []),
-      { text: copy.photo.cancel, style: 'cancel' as const },
-    ]);
+    // Proper menu sheet (replaced the 4-button Alert — Android caps Alerts at 3
+    // buttons, so Cancel never rendered and the dialog couldn't be dismissed)
+    setMenuVisible(true);
   };
+
+  const menuHeroFace = () => { setMenuVisible(false); setAvatarPickerVisible(true); };
+  const menuCamera = () => { setMenuVisible(false); void fromCamera(); };
+  const menuLibrary = () => { setMenuVisible(false); void fromLibrary(); };
 
   const pickHeroAvatar = (key: string) => {
     setAvatarPickerVisible(false);
@@ -65,9 +67,15 @@ export function usePhotoPicker() {
 
   return {
     canEditPhoto,
+    canUploadPhoto,
     changeMyPhoto,
     avatarPickerVisible,
     closeAvatarPicker: () => setAvatarPickerVisible(false),
     pickHeroAvatar,
+    menuVisible,
+    closeMenu: () => setMenuVisible(false),
+    menuHeroFace,
+    menuCamera,
+    menuLibrary,
   };
 }

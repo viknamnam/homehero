@@ -63,7 +63,40 @@ export const HERO_AVATARS: HeroDesign[] = [
   { key: 'owl',   src: require('../../assets/avatars/owl.png') },
   { key: 'bear',  src: require('../../assets/avatars/bear.png') },
   { key: 'bee',   src: require('../../assets/avatars/bee.png') },
+  { key: 'puppy',    src: require('../../assets/avatars/puppy.png') },
+  { key: 'unicorn',  src: require('../../assets/avatars/unicorn.png') },
+  { key: 'rabbit',   src: require('../../assets/avatars/rabbit.png') },
+  { key: 'cat',      src: require('../../assets/avatars/cat.png') },
+  { key: 'hedgehog', src: require('../../assets/avatars/hedgehog.png') },
 ];
+
+// Display defaults (founder decision): every member without a chosen avatar
+// gets a hero face automatically — CREATURES only, so no algorithm ever guesses
+// anyone's gender. Assignment is deterministic (members sorted by id) and
+// household-unique: explicitly-picked creatures are skipped, and unset members
+// each take the next free one, so the same family sees the same faces on every
+// device with no database writes. Picking your own avatar overrides, always.
+export const NEUTRAL_DEFAULT_KEYS = [
+  'fox', 'owl', 'bear', 'bee', 'dog', 'cat', 'rabbit', 'puppy', 'hedgehog', 'unicorn',
+];
+
+export function defaultAvatarKey(
+  memberId: string,
+  members: { id: string; avatarUrl?: string | null }[],
+): string {
+  const taken = new Set(
+    members
+      .filter((m) => m.avatarUrl && isHeroAvatar(m.avatarUrl))
+      .map((m) => heroAvatarKey(m.avatarUrl as string)),
+  );
+  let pool = NEUTRAL_DEFAULT_KEYS.filter((k) => !taken.has(k));
+  if (pool.length === 0) pool = NEUTRAL_DEFAULT_KEYS;
+  const unset = members
+    .filter((m) => !m.avatarUrl)
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const idx = unset.findIndex((m) => m.id === memberId);
+  return pool[(idx === -1 ? 0 : idx) % pool.length];
+}
 
 /** Image source for a stored avatar key (unknown/legacy keys fall back to the first design). */
 export function heroAvatarSource(key: string): number {

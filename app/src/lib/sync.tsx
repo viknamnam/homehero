@@ -297,6 +297,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           client_id: t.id,
         }, { onConflict: 'client_id' });
         if (error) throw error;
+        // Notification 1 of 2 (#61): tell the recipient. Fire-and-forget —
+        // delivery failures must never fail the sync queue.
+        const fromName = s.members.find((m) => m.id === t.fromMemberId)?.name;
+        void supabase.functions.invoke('notify-thanks', {
+          body: { toMemberId: t.toMemberId, fromName },
+        }).catch(() => {});
       } else if (op.kind === 'thanks_delete') {
         const { error } = await supabase.from('appreciations')
           .delete().eq('household_id', hid).eq('client_id', op.thanksId);

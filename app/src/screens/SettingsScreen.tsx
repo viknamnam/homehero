@@ -2,14 +2,18 @@ import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { CATEGORIES } from '../constants/categories';
 import { HERO_STYLES } from '../lib/heroVoice';
-import { copy } from '../copy/strings';
+import { copy, currencySymbol } from '../copy/strings';
 import { useHousehold } from '../store/HouseholdStore';
 import { useSync } from '../lib/sync';
 import { usePhotoPicker } from '../lib/usePhotoPicker';
 import { FLAGS } from '../constants/flags';
+import { cancelWeeklyDigest, disableThanksPush, enableThanksPush, notificationsAvailable, scheduleWeeklyDigest } from '../lib/notifications';
+import QRCode from 'react-native-qrcode-svg';
+import { joinUrlFor } from '../lib/joinLink';
 import { HeroAvatarPicker } from '../components/HeroAvatars';
+import { AvatarMenuSheet } from '../components/AvatarMenu';
 import * as Clipboard from 'expo-clipboard';
-import { Avatar, Card, Chip, PrimaryButton } from '../components/ui';
+import { Avatar, BusyButton, Card, Chip, PrimaryButton } from '../components/ui';
 import { Icon } from '../components/icons';
 import { Header, LogoLoader } from '../components/brand';
 import { colors, spacing, type } from '../theme/tokens';
@@ -26,6 +30,7 @@ function SyncCard() {
   const [verifying, setVerifying] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [inviteBusy, setInviteBusy] = useState(false);
 
   if (!sync.cloudEnabled) return null;
   const linked = !!state.cloud.householdId;
@@ -128,10 +133,20 @@ function SyncCard() {
           <Text style={[type.label, { marginTop: spacing.l }]}>{copy.sync.inviteTitle}</Text>
           {inviteCode ? (
             <View style={styles.inviteBox}>
+              {/* QR encodes the join LINK: phone cameras scan it straight into
+                  the app (deep link) — or the web fallback if not installed.
+                  The link is also shareable by message; the code stays for
+                  good old reading-it-out-loud. */}
+              <View style={{ alignItems: 'center', marginBottom: spacing.m }}>
+                <View style={{ backgroundColor: '#FFFFFF', padding: spacing.m, borderRadius: 12 }}>
+                  <QRCode value={joinUrlFor(inviteCode)} size={132} color={colors.charcoal} backgroundColor="#FFFFFF" />
+                </View>
+                <Text style={[type.caption, { marginTop: spacing.s }]}>{copy.sync.inviteScanHint}</Text>
+              </View>
               <Text style={[type.display, { letterSpacing: 4 }]}>{inviteCode}</Text>
               <Pressable
                 onPress={async () => {
-                  await Clipboard.setStringAsync(inviteCode);
+                  await Clipboard.setStringAsync(copy.sync.inviteShareText(inviteCode, joinUrlFor(inviteCode)));
                   setInviteCopied(true);
                 }}
                 style={{ marginTop: spacing.s }}
@@ -148,16 +163,22 @@ function SyncCard() {
           ) : (
             <Pressable
               style={{ marginTop: spacing.s }}
-              onPress={async () => setInviteCode(await sync.createInvite())}
+              onPress={async () => {
+                setInviteBusy(true);
+                setInviteCode(await sync.createInvite());
+                setInviteBusy(false);
+              }}
             >
-              <Text style={[type.label, { color: colors.coralDeep }]}>{copy.sync.inviteCta}</Text>
+              {inviteBusy
+                ? <LogoLoader size={22} label={copy.sync.inviteBusy} />
+                : <Text style={[type.label, { color: colors.coralDeep }]}>{copy.sync.inviteCta}</Text>}
             </Pressable>
           )}
 
           <View style={{ flexDirection: 'row', marginTop: spacing.l }}>
-            <Pressable onPress={() => sync.syncNow()} disabled={sync.busy} style={{ marginRight: spacing.xl }}>
+            <Pressable onPress={() => sync.syncNow()} disabled={sync.busy} style={{ marginRight: spacing.xl, minHeight: 28, justifyContent: 'center' }}>
               <Text style={[type.label, { color: colors.sageDeep }]}>
-                {sync.busy ? '…' : copy.sync.syncNow}
+                {sync.busy ? copy.sync.syncing : copy.sync.syncNow}
               </Text>
             </Pressable>
             <Pressable onPress={() => sync.signOut()}>
@@ -177,10 +198,29 @@ function SyncCard() {
 }
 
 export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (childId: string) => void } = {}) {
-  const { state, setHideMoney, setCurrency, setRate, reset, resetLogMetric, setHeroStyle } = useHousehold();
+  const { state, dispatch, setHideMoney, setCurrency, setRate, reset, resetLogMetric, setHeroStyle, setPocketMoney } = useHousehold();
+
+  const toggleThanksPush = async (v: boolean) => {
+    if (v && state.meId) {
+      const ok = await enableThanksPush(state.meId);
+      dispatch({ type: 'SET_NOTIFY_PREFS', thanksPush: ok });
+    } else {
+      if (state.meId) await disableThanksPush(state.meId);
+      dispatch({ type: 'SET_NOTIFY_PREFS', thanksPush: false });
+    }
+  };
+  const toggleDigest = async (v: boolean) => {
+    if (v) {
+      const ok = await scheduleWeeklyDigest(copy.notify.digestTitle, copy.notify.digestBody);
+      dispatch({ type: 'SET_NOTIFY_PREFS', weeklyDigest: ok });
+    } else {
+      await cancelWeeklyDigest();
+      dispatch({ type: 'SET_NOTIFY_PREFS', weeklyDigest: false });
+    }
+  };
   const [confirmingReset, setConfirmingReset] = useState(false);
   // Photo avatars: shared flow (camera or library) — see lib/usePhotoPicker
-  const { canEditPhoto, changeMyPhoto, avatarPickerVisible, closeAvatarPicker, pickHeroAvatar } = usePhotoPicker();
+  const { canEditPhoto, canUploadPhoto, changeMyPhoto, avatarPickerVisible, closeAvatarPicker, pickHeroAvatar, menuVisible, closeMenu, menuHeroFace, menuCamera, menuLibrary } = usePhotoPicker();
   const sync = useSync();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   // Kids Mode: add-child form + child-avatar picker target (avatars ONLY for kids — no camera)
@@ -249,7 +289,7 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
                   style={{ alignItems: 'center' }}
                   accessibilityLabel={isChild ? copy.photo.heroTitle : mine && canEditPhoto ? copy.settings.editPhoto : m.name}
                 >
-                  <Avatar name={m.name} colour={m.colour} size={48} avatarUrl={m.avatarUrl} />
+                  <Avatar name={m.name} colour={m.colour} size={48} avatarUrl={m.avatarUrl} memberId={m.id} />
                   <Text style={[type.caption, { marginTop: spacing.xs }]}>
                     {m.name}{isChild ? ` · ${copy.settings.kidBadge}` : ''}
                   </Text>
@@ -291,7 +331,7 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
               )}
               <View style={{ flexDirection: 'row', marginTop: spacing.s, alignItems: 'center' }}>
                 <View style={{ flex: 1 }}>
-                  <PrimaryButton label={copy.settings.addChildSave} onPress={() => void saveChild()} disabled={!childName.trim()} />
+                  <BusyButton label={copy.settings.addChildSave} busyLabel={copy.settings.addChildBusy} onPress={saveChild} disabled={!childName.trim()} />
                 </View>
                 <Pressable onPress={() => { setAddingChild(false); setChildError(false); }} style={{ marginLeft: spacing.m, minHeight: 44, justifyContent: 'center' }}>
                   <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.photo.cancel}</Text>
@@ -301,6 +341,61 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
           )
         )}
       </Card>
+
+      {FLAGS.kidsMode && (
+        <Card style={{ marginTop: spacing.m }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, marginRight: spacing.m }}>
+              <Text style={type.h2}>{copy.settings.pocketTitle}</Text>
+              <Text style={[type.caption, { marginTop: 2 }]}>{copy.settings.pocketSub}</Text>
+            </View>
+            <Switch
+              value={!!state.pocketMoneyEnabled}
+              onValueChange={(v) => setPocketMoney(v, state.pocketPointsPerUnit ?? 70)}
+              trackColor={{ true: colors.sage, false: colors.mist }}
+              thumbColor={colors.surface}
+            />
+          </View>
+          {state.pocketMoneyEnabled && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.m }}>
+              <TextInput
+                style={[styles.rateInput, { width: 76 }]}
+                keyboardType="number-pad"
+                value={String(state.pocketPointsPerUnit ?? 70)}
+                onChangeText={(t) => setPocketMoney(true, Number(t.replace(/[^0-9]/g, '')) || 70)}
+              />
+              <Text style={[type.body, { marginLeft: spacing.m, flex: 1 }]}>
+                {copy.settings.pocketRate(currencySymbol[state.currency] ?? state.currency)}
+              </Text>
+            </View>
+          )}
+        </Card>
+      )}
+
+      {FLAGS.notifications && notificationsAvailable() && (
+        <Card style={{ marginTop: spacing.m }}>
+          <Text style={type.h2}>{copy.notify.cardTitle}</Text>
+          <Text style={[type.caption, { marginTop: 2 }]}>{copy.notify.cardSub}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.m }}>
+            <Text style={[type.body, { flex: 1, marginRight: spacing.m }]}>{copy.notify.thanksLabel}</Text>
+            <Switch
+              value={!!state.thanksPushEnabled}
+              onValueChange={(v) => void toggleThanksPush(v)}
+              trackColor={{ true: colors.sage, false: colors.mist }}
+              thumbColor={colors.surface}
+            />
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.m }}>
+            <Text style={[type.body, { flex: 1, marginRight: spacing.m }]}>{copy.notify.digestLabel}</Text>
+            <Switch
+              value={!!state.weeklyDigestEnabled}
+              onValueChange={(v) => void toggleDigest(v)}
+              trackColor={{ true: colors.sage, false: colors.mist }}
+              thumbColor={colors.surface}
+            />
+          </View>
+        </Card>
+      )}
 
       <Card style={{ marginTop: spacing.m }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -401,6 +496,14 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
         </Text>
       </Pressable>
       <View style={{ height: 120 }} />
+      <AvatarMenuSheet
+        visible={menuVisible}
+        onClose={closeMenu}
+        onHeroFace={menuHeroFace}
+        onCamera={menuCamera}
+        onLibrary={menuLibrary}
+        photosAvailable={canUploadPhoto}
+      />
       <HeroAvatarPicker visible={avatarPickerVisible} onPick={pickHeroAvatar} onClose={closeAvatarPicker} />
       <HeroAvatarPicker
         visible={childAvatarFor !== null}

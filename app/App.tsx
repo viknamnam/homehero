@@ -68,6 +68,7 @@ function Shell() {
       {FLAGS.doodles && <DoodleBackground />}
       {tab === 'today' && (
         <TodayScreen
+          onOpenKidMode={FLAGS.kidsMode ? (id) => setKidModeChildId(id) : undefined}
           onAdd={() => setAdding(true)}
           onEdit={(t) => setEditing(t)}
           onSeeWeek={() => setTab('week')}
@@ -126,7 +127,11 @@ function Shell() {
       {/* Kids Mode covers EVERYTHING (tabs, gear, overlays) — its own world,
           exited only via the hold-to-exit control inside */}
       {FLAGS.kidsMode && kidModeChildId && (
-        <KidModeScreen childId={kidModeChildId} onExit={() => setKidModeChildId(null)} />
+        <KidModeScreen
+          childId={kidModeChildId}
+          onExit={() => setKidModeChildId(null)}
+          onSwitchChild={(id) => setKidModeChildId(id)}
+        />
       )}
 
       <Toast message={toast} visible={toastVisible} />

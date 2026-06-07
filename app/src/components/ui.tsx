@@ -1,7 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Icon, IconName } from './icons';
-import { heroAvatarKey, heroAvatarSource, isHeroAvatar } from './HeroAvatars';
+import { AVATAR_SCHEME, defaultAvatarKey, heroAvatarKey, heroAvatarSource, isHeroAvatar } from './HeroAvatars';
+import { useHouseholdMaybe } from '../store/HouseholdStore';
+import { FLAGS } from '../constants/flags';
+import { LogoLoader } from './brand';
 import { colors, fonts, radius, shadow, spacing, type } from '../theme/tokens';
 
 const shadowCardCompat = shadow.card;
@@ -62,9 +65,42 @@ export function PrimaryButton({ label, sub, onPress, disabled }: {
   );
 }
 
-export function Avatar({ name, colour, size = 40, selected, avatarUrl }: {
-  name: string; colour: string; size?: number; selected?: boolean; avatarUrl?: string | null;
+// BusyButton — RULE: every button that talks to the network uses this, never a
+// bare PrimaryButton. While the async onPress runs, the button is replaced by
+// the assembling-logo loader, so taps always visibly DO something and
+// double-fires are impossible. (Founder feedback, twice: dead-feeling buttons.)
+export function BusyButton({ label, busyLabel, onPress, disabled }: {
+  label: string; busyLabel: string; onPress: () => Promise<unknown>; disabled?: boolean;
 }) {
+  const [busy, setBusy] = useState(false);
+  if (busy) {
+    return (
+      <View style={{ alignItems: 'center', minHeight: 48, justifyContent: 'center' }}>
+        <LogoLoader label={busyLabel} />
+      </View>
+    );
+  }
+  return (
+    <PrimaryButton
+      label={label}
+      disabled={disabled}
+      onPress={() => {
+        setBusy(true);
+        onPress().finally(() => setBusy(false));
+      }}
+    />
+  );
+}
+
+export function Avatar({ name, colour, size = 40, selected, avatarUrl, memberId }: {
+  name: string; colour: string; size?: number; selected?: boolean; avatarUrl?: string | null; memberId?: string;
+}) {
+  const hh = useHouseholdMaybe();
+  // Display default: no chosen avatar + we know which member this is -> a
+  // deterministic neutral creature (see HeroAvatars.defaultAvatarKey)
+  if (!avatarUrl && memberId && hh && FLAGS.heroAvatars) {
+    avatarUrl = AVATAR_SCHEME + defaultAvatarKey(memberId, hh.state.members);
+  }
   const initial = name.trim().charAt(0).toUpperCase();
   const frame = {
     width: size, height: size, borderRadius: size / 2,

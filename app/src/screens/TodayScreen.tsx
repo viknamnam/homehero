@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryKey, categoryByKey } from '../constants/categories';
 import { copy, currencySymbol } from '../copy/strings';
@@ -8,6 +8,8 @@ import { AffirmationCard, Avatar, Card, Chip, IconBadge, PrimaryButton, StatCard
 import { usePhotoPicker } from '../lib/usePhotoPicker';
 import { PlanCard } from '../components/PlanCard';
 import { HeroAvatarPicker } from '../components/HeroAvatars';
+import { AvatarMenuSheet } from '../components/AvatarMenu';
+import { FamilySwitcherSheet } from '../components/FamilySwitcher';
 import { FLAGS } from '../constants/flags';
 import { Header } from '../components/brand';
 import { colors, fonts, spacing, type } from '../theme/tokens';
@@ -50,13 +52,15 @@ function TaskRow({ task, personColour, personName, onEdit, onDelete }: {
   );
 }
 
-export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan }: {
+export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan, onOpenKidMode }: {
   onAdd: () => void; onEdit: (task: Task) => void; onSeeWeek?: () => void;
   onLogPlan?: (plan: import('../store/HouseholdStore').PlannedTask, memberId: string) => void;
+  onOpenKidMode?: (childId: string) => void;
 }) {
   const { state, deleteTask } = useHousehold();
   const me = state.members.find((m) => m.id === state.meId);
-  const { canEditPhoto, changeMyPhoto, avatarPickerVisible, closeAvatarPicker, pickHeroAvatar } = usePhotoPicker();
+  const { canEditPhoto, canUploadPhoto, changeMyPhoto, avatarPickerVisible, closeAvatarPicker, pickHeroAvatar, menuVisible, closeMenu, menuHeroFace, menuCamera, menuLibrary } = usePhotoPicker();
+  const [familyOpen, setFamilyOpen] = useState(false);
 
   const todayTasks = useMemo(() => {
     const now = new Date();
@@ -103,15 +107,21 @@ export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan }: {
                 accessibilityLabel={canEditPhoto ? copy.photo.title : me?.name}
                 hitSlop={6}
               >
-                <Avatar name={me?.name ?? ''} colour={me?.colour ?? colors.peach} size={48} avatarUrl={me?.avatarUrl} />
+                <Avatar name={me?.name ?? ''} colour={me?.colour ?? colors.peach} size={48} avatarUrl={me?.avatarUrl} memberId={me?.id} />
               </Pressable>
-              <View style={{ marginLeft: spacing.m, flex: 1 }}>
+              <Pressable
+                style={{ marginLeft: spacing.m, flex: 1 }}
+                onPress={onOpenKidMode ? () => setFamilyOpen(true) : undefined}
+                accessibilityRole={onOpenKidMode ? 'button' : undefined}
+                accessibilityLabel={onOpenKidMode ? copy.family.title : undefined}
+              >
                 <Text style={type.caption}>{greetingWord()}</Text>
                 <Text style={[type.serifTitle, { fontSize: 26, marginTop: -2 }]}>
                   {me?.name} <Text style={{ fontSize: 18 }}>💛</Text>
+                  {onOpenKidMode ? <Text style={{ fontSize: 15, color: colors.charcoalSoft }}>  ▾</Text> : null}
                 </Text>
                 <Text style={[type.caption, { marginTop: 1 }]}>{greetSub}</Text>
-              </View>
+              </Pressable>
             </View>
 
             {/* Compact stat row — everything important visible at a glance (refined mockup) */}
@@ -211,7 +221,18 @@ export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan }: {
           </View>
         }
       />
+      <AvatarMenuSheet
+        visible={menuVisible}
+        onClose={closeMenu}
+        onHeroFace={menuHeroFace}
+        onCamera={menuCamera}
+        onLibrary={menuLibrary}
+        photosAvailable={canUploadPhoto}
+      />
       <HeroAvatarPicker visible={avatarPickerVisible} onPick={pickHeroAvatar} onClose={closeAvatarPicker} />
+      {onOpenKidMode && (
+        <FamilySwitcherSheet visible={familyOpen} onClose={() => setFamilyOpen(false)} onOpenKidMode={onOpenKidMode} />
+      )}
     </View>
   );
 }

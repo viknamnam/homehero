@@ -84,6 +84,14 @@ export interface HouseholdState {
   thanks: Thanks[];
   plans: PlannedTask[];
   heroStyle: HeroStyle;
+  // Pocket money (Kids Mode, §10): parent-controlled, OFF by default, fully
+  // separate from adult value calculations. Local-only for now (not in pull
+  // payload — APPLY_PULL spreads state, so these survive syncs).
+  pocketMoneyEnabled?: boolean;
+  pocketPointsPerUnit?: number; // e.g. 70 => 70 hero points per 1 unit of currency
+  // Notification prefs (#61) — per-device, local-only by nature
+  thanksPushEnabled?: boolean;
+  weeklyDigestEnabled?: boolean;
   cloud: CloudState;
 }
 
@@ -152,6 +160,8 @@ type Action =
   | { type: 'CLAIM_PLAN'; id: string; memberId: string; date: string }
   | { type: 'COMPLETE_PLAN'; id: string; date: string }
   | { type: 'SET_HERO_STYLE'; style: HeroStyle }
+  | { type: 'SET_POCKET_MONEY'; enabled: boolean; pointsPerUnit: number }
+  | { type: 'SET_NOTIFY_PREFS'; thanksPush?: boolean; weeklyDigest?: boolean }
   | { type: 'ENQUEUE'; op: PendingOp }
   | { type: 'DEQUEUE'; opIds: string[] }
   | { type: 'RELINK_MEMBERS'; idMap: Record<string, string>; members: Member[]; meId: string }
@@ -204,6 +214,14 @@ function reducer(state: HouseholdState, action: Action): HouseholdState {
       return { ...state, thanks: [action.thanks, ...state.thanks] };
     case 'DELETE_THANKS':
       return { ...state, thanks: state.thanks.filter((t) => t.id !== action.id) };
+    case 'SET_NOTIFY_PREFS':
+      return {
+        ...state,
+        thanksPushEnabled: action.thanksPush ?? state.thanksPushEnabled,
+        weeklyDigestEnabled: action.weeklyDigest ?? state.weeklyDigestEnabled,
+      };
+    case 'SET_POCKET_MONEY':
+      return { ...state, pocketMoneyEnabled: action.enabled, pocketPointsPerUnit: Math.max(1, Math.round(action.pointsPerUnit)) };
     case 'SET_HERO_STYLE':
       return { ...state, heroStyle: action.style };
     case 'ADD_PLAN':
@@ -313,6 +331,7 @@ interface StoreApi {
   claimPlan: (id: string) => void;
   completePlan: (id: string) => void;
   setHeroStyle: (style: HeroStyle) => void;
+  setPocketMoney: (enabled: boolean, pointsPerUnit: number) => void;
   setHideMoney: (v: boolean) => void;
   setCurrency: (c: string) => void;
   setRate: (key: CategoryKey, rate: number) => void;
@@ -437,6 +456,7 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
         enqueue({ kind: 'plan_upsert', planId: id } as any);
       },
       setHeroStyle: (style) => dispatch({ type: 'SET_HERO_STYLE', style }),
+      setPocketMoney: (enabled, pointsPerUnit) => dispatch({ type: 'SET_POCKET_MONEY', enabled, pointsPerUnit }),
       setHideMoney: (v) => { dispatch({ type: 'SET_HIDE_MONEY', value: v }); enqueue({ kind: 'household_update' } as any); },
       setCurrency: (c) => { dispatch({ type: 'SET_CURRENCY', currency: c }); enqueue({ kind: 'household_update' } as any); },
       setRate: (key, rate) => { dispatch({ type: 'SET_RATE', key, rate }); enqueue({ kind: 'rate_update', categoryKey: key } as any); },
@@ -447,6 +467,12 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   return <StoreContext.Provider value={api}>{children}</StoreContext.Provider>;
+}
+
+/** Like useHousehold, but returns null outside the provider — for presentational
+ *  components (e.g. Avatar) that must not crash in isolated render contexts. */
+export function useHouseholdMaybe(): StoreApi | null {
+  return useContext(StoreContext);
 }
 
 export function useHousehold(): StoreApi {

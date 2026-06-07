@@ -88,7 +88,7 @@ export default function HomeValueScreen({ onPlan }: { onPlan?: () => void }) {
                 return (
                   <View key={b.member.id} style={{ marginBottom: spacing.s }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Avatar name={b.member.name} colour={b.member.colour} size={24} avatarUrl={b.member.avatarUrl} />
+                      <Avatar name={b.member.name} colour={b.member.colour} size={24} avatarUrl={b.member.avatarUrl} memberId={b.member.id} />
                       <Text style={[type.label, { flex: 1, marginLeft: spacing.s }]} numberOfLines={1}>{b.member.name}</Text>
                       <Text style={type.caption}>{fmtHM(b.min)}</Text>
                     </View>
@@ -108,7 +108,7 @@ export default function HomeValueScreen({ onPlan }: { onPlan?: () => void }) {
             <Text style={type.h2}>{copy.homeValue.valueTitle}</Text>
             {wk.byMember.map((b) => (
               <View key={b.member.id} style={styles.valueRow}>
-                <Avatar name={b.member.name} colour={b.member.colour} size={28} avatarUrl={b.member.avatarUrl} />
+                <Avatar name={b.member.name} colour={b.member.colour} size={28} avatarUrl={b.member.avatarUrl} memberId={b.member.id} />
                 <Text style={[type.body, { flex: 1, marginLeft: spacing.s }]}>{b.member.name}</Text>
                 <Text style={[type.body, { fontWeight: '700' }]}>{cur}{b.value}</Text>
               </View>
