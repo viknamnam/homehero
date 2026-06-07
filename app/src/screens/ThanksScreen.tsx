@@ -36,7 +36,7 @@ export default function ThanksScreen({ onToast }: { onToast?: (m: string) => voi
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Header />
         <Text style={[type.serifTitle, { fontSize: 26 }]}>{copy.thanks.title}</Text>

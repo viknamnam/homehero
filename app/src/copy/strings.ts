@@ -89,6 +89,14 @@ export const copy = {
   quickLog: {
     title: 'Quick Log',
     sub: "Tell HeroNest what happened. We'll turn it into tasks.",
+    // Add Task entry-point pill (Jun 2026 design pass): a real button, not a text link
+    entryTitle: 'Tell HeroNest what you did',
+    entryHint: "We'll turn your words into tasks ✨",
+    // P4b in-app mic
+    micLabel: 'Speak your tasks',
+    micListening: 'Listening… tap the mic when you\'re done',
+    micDenied: 'HeroNest needs microphone access for voice — you can switch it on in your phone settings. Typing works too.',
+    micTrouble: "Couldn't quite hear that — give it another go, or just type it.",
     placeholder: 'e.g. I packed lunches, drove the kids to football, and ordered groceries…',
     parseCta: 'Turn it into tasks',
     parsing: 'Reading…',

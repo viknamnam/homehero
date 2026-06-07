@@ -8,7 +8,8 @@ import { FLAGS } from '../constants/flags';
 import { copy, currencySymbol } from '../copy/strings';
 import { useHousehold, Task } from '../store/HouseholdStore';
 import { Avatar, Chip, PrimaryButton } from '../components/ui';
-import { colors, spacing, type } from '../theme/tokens';
+import { Icon } from '../components/icons';
+import { colors, radius, shadow, spacing, type } from '../theme/tokens';
 import { useInsets } from '../lib/insets';
 
 const DURATIONS = [5, 10, 15, 30, 45, 60];
@@ -119,95 +120,118 @@ export default function AddTaskScreen({ onDone, editTask, prefill, onQuickLog }:
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={[type.serifTitle, { fontSize: 26 }]}>
+        {/* Title is centred (mockup composition). The overlay ✕ lives at top-right
+            (y 44–88); the pill below clears it via headerGap so there is no
+            collision/mistap zone — founder feedback, Jun 2026. */}
+        <Text style={[type.serifTitle, styles.title]}>
           {isEdit ? copy.addTask.editTitle : copy.addTask.screenTitle}
         </Text>
         {!isEdit && FLAGS.quickLog && onQuickLog && (
-          <Pressable onPress={onQuickLog} style={{ marginTop: spacing.s }} accessibilityRole="button">
-            <Text style={[type.label, { color: colors.sageDeep }]}>{copy.quickLog.sub}</Text>
+          <Pressable
+            onPress={onQuickLog}
+            style={({ pressed }) => [styles.tellPill, pressed && { opacity: 0.85 }]}
+            accessibilityRole="button"
+            accessibilityLabel={copy.quickLog.entryTitle}
+          >
+            <View style={styles.tellIcon}>
+              <Icon name="sparkles" size={18} color={colors.sageDeep} strokeWidth={2.2} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[type.label, { color: colors.charcoal }]}>{copy.quickLog.entryTitle}</Text>
+              <Text style={[type.caption, { marginTop: 1 }]}>{copy.quickLog.entryHint}</Text>
+            </View>
+            <Text style={[type.h2, { color: colors.sageDeep }]}>›</Text>
           </Pressable>
         )}
 
-        <Text style={[type.h2, styles.section]}>{copy.addTask.whatPrompt}</Text>
-        {/* 2-row horizontal scroll keeps all 13 reachable without eating vertical space */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.s }}>
-          <View>
-            <View style={{ flexDirection: 'row' }}>
-              {categoryRows.top.map((c) => <CatChip key={c.key} c={c} />)}
+        <View style={[styles.sectionCard, !isEdit && FLAGS.quickLog && onQuickLog ? null : styles.headerGap]}>
+          <Text style={type.h2}>{copy.addTask.whatPrompt}</Text>
+          {/* 2-row horizontal scroll keeps all 13 reachable without eating vertical space */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.s }}>
+            <View>
+              <View style={{ flexDirection: 'row' }}>
+                {categoryRows.top.map((c) => <CatChip key={c.key} c={c} />)}
+              </View>
+              <View style={{ flexDirection: 'row' }}>
+                {categoryRows.bottom.map((c) => <CatChip key={c.key} c={c} />)}
+              </View>
             </View>
-            <View style={{ flexDirection: 'row' }}>
-              {categoryRows.bottom.map((c) => <CatChip key={c.key} c={c} />)}
-            </View>
-          </View>
-        </ScrollView>
+          </ScrollView>
 
-        <TextInput
-          style={styles.input}
-          placeholder={copy.addTask.titleHint}
-          placeholderTextColor={colors.charcoalSoft}
-          value={title}
-          onChangeText={setTitle}
-        />
-
-        <Text style={[type.h2, styles.section]}>{copy.addTask.durationPrompt}</Text>
-        <View style={styles.chipWrap}>
-          {DURATIONS.map((d) => (
-            <Chip
-              key={d}
-              label={`${d} min`}
-              selected={!customMode && durationMin === d}
-              onPress={() => { setCustomMode(false); setDurationMin(d); }}
-            />
-          ))}
-          <Chip
-            label={copy.addTask.custom}
-            selected={customMode}
-            onPress={() => setCustomMode(true)}
+          <TextInput
+            style={styles.input}
+            placeholder={copy.addTask.titleHint}
+            placeholderTextColor={colors.charcoalSoft}
+            value={title}
+            onChangeText={setTitle}
           />
         </View>
-        {customMode && (
-          <View style={styles.stepper}>
-            <Pressable style={styles.stepBtn} onPress={() => setDurationMin((m) => Math.max(5, m - 5))}>
-              <Text style={type.h1}>−</Text>
-            </Pressable>
-            <Text style={[type.display, { minWidth: 100, textAlign: 'center' }]}>{durationMin} min</Text>
-            <Pressable style={styles.stepBtn} onPress={() => setDurationMin((m) => Math.min(1440, m + 5))}>
-              <Text style={type.h1}>＋</Text>
-            </Pressable>
-          </View>
-        )}
 
-        <Text style={[type.h2, styles.section]}>{copy.addTask.whoPrompt}</Text>
-        <View style={{ flexDirection: 'row', marginTop: spacing.s }}>
-          {state.members.map((m) => (
-            <Pressable
-              key={m.id}
-              onPress={() => setMemberId(m.id)}
-              style={{ alignItems: 'center', marginRight: spacing.l }}
-              accessibilityRole="button"
-            >
-              <Avatar name={m.name} colour={m.colour} size={44} selected={memberId === m.id} avatarUrl={m.avatarUrl} />
-              <Text style={[type.caption, { marginTop: spacing.xs }]}>{m.name}</Text>
-            </Pressable>
-          ))}
+        <View style={styles.sectionCard}>
+          <Text style={type.h2}>{copy.addTask.durationPrompt}</Text>
+          <View style={styles.chipWrap}>
+            {DURATIONS.map((d) => (
+              <Chip
+                key={d}
+                label={`${d} min`}
+                selected={!customMode && durationMin === d}
+                onPress={() => { setCustomMode(false); setDurationMin(d); }}
+              />
+            ))}
+            <Chip
+              label={copy.addTask.custom}
+              selected={customMode}
+              onPress={() => setCustomMode(true)}
+            />
+          </View>
+          {customMode && (
+            <View style={styles.stepper}>
+              <Pressable style={styles.stepBtn} onPress={() => setDurationMin((m) => Math.max(5, m - 5))}>
+                <Text style={type.h1}>−</Text>
+              </Pressable>
+              <Text style={[type.display, { minWidth: 100, textAlign: 'center' }]}>{durationMin} min</Text>
+              <Pressable style={styles.stepBtn} onPress={() => setDurationMin((m) => Math.min(1440, m + 5))}>
+                <Text style={type.h1}>＋</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
 
-        <Text style={[type.h2, styles.section]}>{copy.addTask.whenPrompt}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.s }}>
-          {dayChips.map((d) => (
-            <Chip
-              key={d.offset}
-              label={d.label}
-              selected={dayOffset === d.offset}
-              onPress={() => setDayOffset(d.offset)}
-            />
-          ))}
-        </ScrollView>
+        <View style={styles.sectionCard}>
+          <Text style={type.h2}>{copy.addTask.whoPrompt}</Text>
+          <View style={styles.memberRow}>
+            {state.members.map((m) => (
+              <Pressable
+                key={m.id}
+                onPress={() => setMemberId(m.id)}
+                style={{ alignItems: 'center', marginHorizontal: spacing.m }}
+                accessibilityRole="button"
+              >
+                <Avatar name={m.name} colour={m.colour} size={44} selected={memberId === m.id} avatarUrl={m.avatarUrl} />
+                <Text style={[type.caption, { marginTop: spacing.xs }]}>{m.name}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.sectionCard}>
+          <Text style={type.h2}>{copy.addTask.whenPrompt}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.s }}>
+            {dayChips.map((d) => (
+              <Chip
+                key={d.offset}
+                label={d.label}
+                selected={dayOffset === d.offset}
+                onPress={() => setDayOffset(d.offset)}
+              />
+            ))}
+          </ScrollView>
+        </View>
 
         {!noteOpen && !note ? (
-          <Pressable onPress={() => setNoteOpen(true)} style={{ marginTop: spacing.l }}>
+          <Pressable onPress={() => setNoteOpen(true)} style={{ marginTop: spacing.l, alignItems: 'center' }}>
             <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.addTask.noteLink}</Text>
           </Pressable>
         ) : (
@@ -248,16 +272,47 @@ export default function AddTaskScreen({ onDone, editTask, prefill, onQuickLog }:
 
 const styles = StyleSheet.create({
   container: { paddingHorizontal: spacing.l, paddingTop: spacing.xl, paddingBottom: spacing.l },
-  section: { marginTop: spacing.l },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.s },
+  // Centred title (mockup composition). Kept clear of the ✕ at top-right by the
+  // pill/headerGap spacing below it.
+  title: { fontSize: 26, textAlign: 'center' },
+  // "Tell HeroNest" entry pill — a real, obviously-tappable button (sage family,
+  // so it reads as the smart helper and never competes with the coral Save CTA).
+  // marginTop xxl starts it at ~y90, below the overlay ✕ (which ends at y88).
+  tellPill: {
+    flexDirection: 'row', alignItems: 'center',
+    marginTop: spacing.xxl + spacing.s, // clears the overlay ✕ (ends ~y88) with ~10px to spare
+    backgroundColor: colors.sageTint,
+    borderWidth: 1.5, borderColor: colors.sage,
+    borderRadius: radius.button,
+    paddingVertical: spacing.m, paddingHorizontal: spacing.l,
+    minHeight: 56,
+    ...shadow.card,
+  },
+  tellIcon: {
+    width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center', marginRight: spacing.m,
+  },
+  // Edit mode has no pill — the first card still needs to clear the ✕ (ends y88)
+  headerGap: { marginTop: spacing.xxl + spacing.s },
+  // White card per question — matches the mockups' card-stack composition,
+  // and lets the doodle canvas breathe in the gaps between sections.
+  sectionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: spacing.l,
+    marginTop: spacing.l,
+    ...shadow.card,
+  },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: spacing.s },
+  memberRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: spacing.m },
   input: {
     backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1,
-    borderColor: colors.mist, padding: spacing.m, marginTop: spacing.s,
+    borderColor: colors.mist, padding: spacing.m, marginTop: spacing.m,
     fontSize: 16, color: colors.charcoal,
   },
-  stepper: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.m },
+  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.m },
   stepBtn: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: colors.surface,
+    width: 48, height: 48, borderRadius: 24, backgroundColor: colors.warmWhite,
     borderWidth: 1, borderColor: colors.mist, alignItems: 'center', justifyContent: 'center',
   },
   footer: {

@@ -7,4 +7,6 @@ export const FLAGS = {
   homeValue: true,
   planTheDay: true,
   quickLog: true,
+  doodles: true, // decorative pastel background marks (Jun 2026 design pass) — kill switch if it reads as noise
+  voiceMic: true, // P4b in-app mic — UI also self-gates on native module presence (see lib/speech.ts)
 } as const;

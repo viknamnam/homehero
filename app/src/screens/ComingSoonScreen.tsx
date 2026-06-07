@@ -12,7 +12,7 @@ export default function ComingSoonScreen({ kind }: { kind: 'homeValue' | 'thanks
   const tint = kind === 'homeValue' ? colors.butterTint : colors.blushTint;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.warmWhite }} contentContainerStyle={styles.container}>
+    <ScrollView style={{ flex: 1, backgroundColor: 'transparent' }} contentContainerStyle={styles.container}>
       <Header />
       <Card style={{ alignItems: 'center', paddingVertical: spacing.xxl }}>
         <IconBadge icon={icon} tint={tint} size={64} />

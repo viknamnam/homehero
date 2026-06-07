@@ -39,7 +39,7 @@ export default function HomeValueScreen({ onPlan }: { onPlan?: () => void }) {
 
   if (wk.count === 0) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
+      <View style={{ flex: 1, backgroundColor: 'transparent' }}>
         <ScrollView contentContainerStyle={styles.container}>
           <Header />
           <Text style={[type.serifTitle, { fontSize: 26 }]}>{copy.homeValue.title}</Text>
@@ -59,7 +59,7 @@ export default function HomeValueScreen({ onPlan }: { onPlan?: () => void }) {
     : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <ScrollView contentContainerStyle={styles.container}>
         <Header />
         <Text style={[type.serifTitle, { fontSize: 26 }]}>{copy.homeValue.title}</Text>

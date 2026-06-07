@@ -85,7 +85,7 @@ export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan }: {
   const memberById = (id: string) => state.members.find((m) => m.id === id);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <FlatList
         data={todayTasks}
         keyExtractor={(t) => t.id}

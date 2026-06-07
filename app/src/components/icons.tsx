@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   BookOpen, CalendarDays, Camera, Car, CircleDollarSign, ClipboardCheck, ClipboardList,
-  Clock, CookingPot, Ellipsis, HandCoins, Heart, House, Lightbulb, PawPrint, Plus,
+  Clock, CookingPot, Ellipsis, HandCoins, Heart, House, Lightbulb, Mic, PawPrint, Plus,
   Recycle, Settings, Shirt, ShoppingBag, Sparkles, Wrench, X,
 } from 'lucide-react-native';
 import { colors } from '../theme/tokens';
@@ -13,7 +13,7 @@ export type IconName =
   | 'sparkles' | 'cooking' | 'shirt' | 'recycle' | 'car' | 'clipboard' | 'bulb'
   | 'heart' | 'paw' | 'wrench' | 'bag' | 'book' | 'dots'
   | 'house' | 'calendar' | 'dollar' | 'plus' | 'gear' | 'x' | 'clock' | 'coins'
-  | 'clipboard-check' | 'camera';
+  | 'clipboard-check' | 'camera' | 'mic';
 
 const MAP: Record<IconName, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>> = {
   sparkles: Sparkles, cooking: CookingPot, shirt: Shirt, recycle: Recycle, car: Car,
@@ -21,7 +21,7 @@ const MAP: Record<IconName, React.ComponentType<{ size?: number; color?: string;
   bag: ShoppingBag, book: BookOpen, dots: Ellipsis,
   house: House, calendar: CalendarDays, dollar: CircleDollarSign, plus: Plus,
   gear: Settings, x: X, clock: Clock, coins: HandCoins,
-  'clipboard-check': ClipboardCheck, camera: Camera,
+  'clipboard-check': ClipboardCheck, camera: Camera, mic: Mic,
 };
 
 export function Icon({ name, size = 20, color = colors.charcoal, strokeWidth = 2 }: {

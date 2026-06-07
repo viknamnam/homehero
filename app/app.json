@@ -32,6 +32,15 @@
         "projectId": "3c17f185-45f6-4dab-8a8f-2517842ab6de"
       }
     },
-    "owner": "viknamnam"
+    "owner": "viknamnam",
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "HeroNest uses the microphone so you can speak your tasks instead of typing them.",
+          "speechRecognitionPermission": "HeroNest uses on-device speech recognition to turn your words into tasks."
+        }
+      ]
+    ]
   }
 }

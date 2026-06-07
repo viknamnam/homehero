@@ -17,6 +17,7 @@ import HomeValueScreen from './src/screens/HomeValueScreen';
 import ThanksScreen from './src/screens/ThanksScreen';
 import { FLAGS } from './src/constants/flags';
 import { Toast } from './src/components/ui';
+import DoodleBackground from './src/components/DoodleBackground';
 import { useInsets } from './src/lib/insets';
 import { Icon, IconName } from './src/components/icons';
 import { colors, spacing, type } from './src/theme/tokens';
@@ -46,13 +47,23 @@ function Shell() {
   }, []);
 
   const insets = useInsets();
-  if (!state.householdName) return <OnboardingScreen />;
+  if (!state.householdName) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
+        {FLAGS.doodles && <DoodleBackground />}
+        <OnboardingScreen />
+      </View>
+    );
+  }
 
   const overlayOpen = adding || editing !== null;
   const closeOverlay = () => { setAdding(false); setEditing(null); setPlanPrefill(null); setQuickLogging(false); };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
+      {/* Decorative pastel doodles sit on the canvas, behind every screen.
+          Screens paint transparent backgrounds so the shared layer shows through. */}
+      {FLAGS.doodles && <DoodleBackground />}
       {tab === 'today' && (
         <TodayScreen
           onAdd={() => setAdding(true)}
@@ -81,7 +92,8 @@ function Shell() {
       )}
 
       {overlayOpen && (
-        <View style={StyleSheet.absoluteFill}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.warmWhite }]}>
+          {FLAGS.doodles && <DoodleBackground />}
           {quickLogging ? (
             <QuickLogScreen onDone={(msg) => { closeOverlay(); setTab('today'); showToast(msg); }} />
           ) : (

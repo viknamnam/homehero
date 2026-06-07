@@ -99,7 +99,7 @@ export default function WeekScreen() {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.warmWhite }} contentContainerStyle={styles.container}>
+    <ScrollView style={{ flex: 1, backgroundColor: 'transparent' }} contentContainerStyle={styles.container}>
       <Header />
       <Text style={[type.serifTitle, { fontSize: 26 }]}>{copy.week.header}</Text>
 
