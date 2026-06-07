@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CATEGORIES, CategoryKey, categoryByKey } from '../constants/categories';
+import { heroLine } from '../lib/heroVoice';
 import { copy, currencySymbol } from '../copy/strings';
 import { fmtHM, inWeekOf, startOfWeek, useHousehold } from '../store/HouseholdStore';
 import { Avatar, Card, PrimaryButton } from '../components/ui';
@@ -11,10 +12,9 @@ import { colors, spacing, type } from '../theme/tokens';
 // HOME VALUE — a planning view, never a scoreboard (build plan §Family Balance):
 // appreciation appears ABOVE the numbers, contribution is framed as teamwork,
 // there is no "lowest contributor", and every suggestion is observation + option.
-export default function HomeValueScreen() {
+export default function HomeValueScreen({ onPlan }: { onPlan?: () => void }) {
   const { state } = useHousehold();
   const cur = currencySymbol[state.currency] ?? '';
-  const [planOpen, setPlanOpen] = useState(false);
 
   const wk = useMemo(() => {
     const ws = startOfWeek(new Date());
@@ -66,7 +66,7 @@ export default function HomeValueScreen() {
 
         {/* Appreciation FIRST — before any numbers */}
         <Card style={{ marginTop: spacing.m, backgroundColor: colors.peachTint }}>
-          <Text style={[type.h2, { color: colors.charcoal }]}>{copy.homeValue.teamTitle}</Text>
+          <Text style={[type.h2, { color: colors.charcoal }]}>{heroLine('teamBanner', state.heroStyle)}</Text>
           <Text style={[type.body, { marginTop: spacing.xs }]}>
             {copy.homeValue.teamBody(fmtHM(wk.totalMin), state.members.length)}
           </Text>
@@ -114,7 +114,7 @@ export default function HomeValueScreen() {
               </View>
             ))}
             <Text style={[type.caption, { color: colors.sageDeep, marginTop: spacing.s }]}>
-              {copy.homeValue.valueNote}
+              {heroLine('invaluable', state.heroStyle)}
             </Text>
           </Card>
         )}
@@ -128,13 +128,8 @@ export default function HomeValueScreen() {
         )}
 
         <View style={{ marginTop: spacing.l }}>
-          <PrimaryButton label={copy.homeValue.planCta} onPress={() => setPlanOpen((v) => !v)} />
+          <PrimaryButton label={copy.homeValue.planCta} onPress={() => onPlan?.()} />
         </View>
-        {planOpen && (
-          <Card style={{ marginTop: spacing.s, backgroundColor: colors.sageTint }}>
-            <Text style={[type.body, { textAlign: 'center' }]}>{copy.homeValue.planSoon}</Text>
-          </Card>
-        )}
       </ScrollView>
     </View>
   );

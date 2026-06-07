@@ -3,6 +3,8 @@ import {
   Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { CATEGORIES, Category, CategoryKey, categoryByKey } from '../constants/categories';
+import { heroLineRandom } from '../lib/heroVoice';
+import { FLAGS } from '../constants/flags';
 import { copy, currencySymbol } from '../copy/strings';
 import { useHousehold, Task } from '../store/HouseholdStore';
 import { Avatar, Chip, PrimaryButton } from '../components/ui';
@@ -22,22 +24,28 @@ const daysAgo = (iso: string) => {
 // - Save is sticky at the bottom: never scroll to finish a log
 // - Categories are a 2-row horizontal scroll, most-used sorted to front (per design spec §4)
 // - Defaults do the work: 15 min, me, today — the happy path is 3 taps
-export default function AddTaskScreen({ onDone, editTask }: {
+export interface PlanPrefill {
+  planId: string; categoryKey: CategoryKey; title?: string; memberId: string;
+}
+
+export default function AddTaskScreen({ onDone, editTask, prefill, onQuickLog }: {
   onDone: (toast: string) => void;
   editTask?: Task | null;
+  prefill?: PlanPrefill | null;
+  onQuickLog?: () => void;
 }) {
-  const { state, addTask, updateTask, recordLogMs, taskValue } = useHousehold();
+  const { state, addTask, updateTask, recordLogMs, taskValue, completePlan } = useHousehold();
   const insets = useInsets();
   const openedAt = useRef(Date.now());
   const isEdit = !!editTask;
 
-  const [categoryKey, setCategoryKey] = useState<CategoryKey | null>(editTask?.categoryKey ?? null);
-  const [title, setTitle] = useState(editTask?.title ?? '');
+  const [categoryKey, setCategoryKey] = useState<CategoryKey | null>(editTask?.categoryKey ?? prefill?.categoryKey ?? null);
+  const [title, setTitle] = useState(editTask?.title ?? prefill?.title ?? '');
   const [durationMin, setDurationMin] = useState(editTask?.durationMin ?? 15);
   const [customMode, setCustomMode] = useState(
     editTask ? !DURATIONS.includes(editTask.durationMin) : false,
   );
-  const [memberId, setMemberId] = useState(editTask?.memberId ?? state.meId);
+  const [memberId, setMemberId] = useState(editTask?.memberId ?? prefill?.memberId ?? state.meId);
   const [dayOffset, setDayOffset] = useState(
     editTask ? Math.min(Math.max(daysAgo(editTask.occurredAt), 0), 6) : 0,
   );
@@ -91,12 +99,13 @@ export default function AddTaskScreen({ onDone, editTask }: {
       return;
     }
     const firstEver = state.tasks.length === 0;
+    if (prefill?.planId) completePlan(prefill.planId); // plan honoured -> logged with real time
     addTask({
       categoryKey, title: title || undefined, notes: note || undefined,
       durationMin, memberId, occurredAt,
     });
     recordLogMs(Date.now() - openedAt.current); // the 🔒 metric (new logs only)
-    onDone(firstEver ? copy.addTask.savedFirstEver : copy.addTask.savedToast);
+    onDone(firstEver ? copy.addTask.savedFirstEver : heroLineRandom('saved', state.heroStyle));
   };
 
   const CatChip = ({ c }: { c: Category }) => (
@@ -115,6 +124,11 @@ export default function AddTaskScreen({ onDone, editTask }: {
         <Text style={[type.serifTitle, { fontSize: 26 }]}>
           {isEdit ? copy.addTask.editTitle : copy.addTask.screenTitle}
         </Text>
+        {!isEdit && FLAGS.quickLog && onQuickLog && (
+          <Pressable onPress={onQuickLog} style={{ marginTop: spacing.s }} accessibilityRole="button">
+            <Text style={[type.label, { color: colors.sageDeep }]}>{copy.quickLog.sub}</Text>
+          </Pressable>
+        )}
 
         <Text style={[type.h2, styles.section]}>{copy.addTask.whatPrompt}</Text>
         {/* 2-row horizontal scroll keeps all 13 reachable without eating vertical space */}

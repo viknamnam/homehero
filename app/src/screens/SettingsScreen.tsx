@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { CATEGORIES } from '../constants/categories';
+import { HERO_STYLES } from '../lib/heroVoice';
 import { copy } from '../copy/strings';
 import { useHousehold } from '../store/HouseholdStore';
 import { useSync } from '../lib/sync';
@@ -150,7 +151,7 @@ function SyncCard() {
 }
 
 export default function SettingsScreen() {
-  const { state, setHideMoney, setCurrency, setRate, reset, resetLogMetric } = useHousehold();
+  const { state, setHideMoney, setCurrency, setRate, reset, resetLogMetric, setHeroStyle } = useHousehold();
   const [confirmingReset, setConfirmingReset] = useState(false);
   // Photo avatars: shared flow (camera or library) — see lib/usePhotoPicker
   const { canEditPhoto, changeMyPhoto } = usePhotoPicker();
@@ -170,7 +171,7 @@ export default function SettingsScreen() {
     };
     const json = JSON.stringify(payload, null, 2);
     try {
-      await Share.share({ message: json, title: 'HomeHero export' });
+      await Share.share({ message: json, title: 'HeroNest export' });
     } catch {
       await Clipboard.setStringAsync(json);
       Alert.alert(copy.settings.exportCopiedTitle, copy.settings.exportCopiedBody);
@@ -269,6 +270,18 @@ export default function SettingsScreen() {
           ))}
         </Card>
       )}
+
+      <Card style={{ marginTop: spacing.m }}>
+        <Text style={type.h2}>{copy.settings.voiceTitle}</Text>
+        <Text style={[type.caption, { marginTop: spacing.xs, marginBottom: spacing.s }]}>{copy.settings.voiceSub}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {HERO_STYLES.map((st) => (
+            <Chip key={st.key} label={st.label}
+              selected={state.heroStyle === st.key}
+              onPress={() => setHeroStyle(st.key)} />
+          ))}
+        </View>
+      </Card>
 
       <Card style={{ marginTop: spacing.m }}>
         <Text style={type.h2}>{copy.settings.dataTitle}</Text>

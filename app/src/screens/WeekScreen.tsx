@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CATEGORIES } from '../constants/categories';
+import { heroLine } from '../lib/heroVoice';
 import { copy, currencySymbol } from '../copy/strings';
 import { fmtHM, inWeekOf, startOfWeek, useHousehold } from '../store/HouseholdStore';
 import { Card, IconBadge } from '../components/ui';
@@ -170,7 +171,7 @@ export default function WeekScreen() {
               <Text style={type.caption}>{copy.week.mentalLoadSub}</Text>
               {!state.hideMoney && (
                 <Text style={[type.caption, { color: colors.sageDeep, marginBottom: spacing.m, marginTop: 2 }]}>
-                  {copy.week.mentalLoadInvaluable}
+                  {heroLine('invaluable', state.heroStyle)}
                 </Text>
               )}
               {state.hideMoney && <View style={{ height: spacing.m }} />}

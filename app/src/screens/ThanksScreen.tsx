@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CATEGORIES, CategoryKey, categoryByKey } from '../constants/categories';
+import { heroLine } from '../lib/heroVoice';
 import { copy } from '../copy/strings';
 import { inWeekOf, startOfWeek, useHousehold } from '../store/HouseholdStore';
 import { Avatar, Card, Chip, PrimaryButton } from '../components/ui';
@@ -98,6 +99,7 @@ export default function ThanksScreen({ onToast }: { onToast?: (m: string) => voi
 
         {/* This week's wins */}
         <Text style={[type.h2, { marginTop: spacing.l }]}>{copy.thanks.winsTitle}</Text>
+        <Text style={[type.caption, { marginBottom: spacing.xs }]}>{heroLine('thanksWins', state.heroStyle)}</Text>
         {weekThanks.length === 0 ? (
           <Card style={{ marginTop: spacing.s, alignItems: 'center' }}>
             <Text style={[type.caption, { textAlign: 'center' }]}>{copy.thanks.winsEmpty}</Text>

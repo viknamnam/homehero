@@ -39,7 +39,7 @@ export function Wordmark({ size = 22 }: { size?: number }) {
       fontFamily: fonts.serif, fontWeight: '700',
       fontSize: size, color: colors.charcoal, letterSpacing: 0.2,
     }}>
-      HomeHero
+      HeroNest
     </Text>
   );
 }

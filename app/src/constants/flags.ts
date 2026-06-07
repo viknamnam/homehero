@@ -3,7 +3,8 @@
 // reaches users before testing). Flip to true only when the register says so —
 // and Thanks + Home Value flip TOGETHER (appreciation never ships after comparison).
 export const FLAGS = {
-  thanks: false,
-  homeValue: false,
-  planTheDay: false,
+  thanks: true,
+  homeValue: true,
+  planTheDay: true,
+  quickLog: true,
 } as const;

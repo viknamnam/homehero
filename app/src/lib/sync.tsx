@@ -102,7 +102,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     const idByKey: Partial<Record<CategoryKey, string>> = {};
     cats.forEach((c: any) => { idByKey[c.key as CategoryKey] = c.id; });
 
-    const [{ data: mems, error: e3 }, { data: rateRows, error: e4 }, { data: taskRows, error: e5 }, { data: apprRows, error: e6 }] =
+    const [{ data: mems, error: e3 }, { data: rateRows, error: e4 }, { data: taskRows, error: e5 }, { data: apprRows, error: e6 }, { data: planRows, error: e7 }] =
       await Promise.all([
         supabase.from('members').select('id,display_name,colour,auth_user_id,avatar').eq('household_id', householdId),
         supabase.from('rates').select('category_id,hourly_rate').eq('household_id', householdId),
@@ -112,9 +112,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           .select('id,client_id,from_member_id,to_member_id,category_id,message,created_at')
           .eq('household_id', householdId)
           .order('created_at', { ascending: false }).limit(200),
+        supabase.from('planned_tasks').select('*').eq('household_id', householdId).limit(200),
       ]);
-    if (e3 || e4 || e5 || e6 || !mems || !rateRows || !taskRows || !apprRows)
-      return fail(e3 ?? e4 ?? e5 ?? e6 ?? new Error('pull failed'));
+    if (e3 || e4 || e5 || e6 || e7 || !mems || !rateRows || !taskRows || !apprRows || !planRows)
+      return fail(e3 ?? e4 ?? e5 ?? e6 ?? e7 ?? new Error('pull failed'));
 
     const me = mems.find((m: any) => m.auth_user_id === authUserId);
     if (!me) return fail(new Error('your account is not a member of this household'));
@@ -183,6 +184,20 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         categoryKey: a.category_id ? keyById.get(a.category_id) : undefined,
         note: a.message ?? undefined,
         createdAt: a.created_at,
+      })),
+      plans: planRows.map((p: any) => ({
+        id: p.client_id ?? p.id,
+        categoryKey: p.category_key,
+        title: p.title ?? undefined,
+        assignedMemberId: p.assigned_member_id,
+        repeat: p.repeat,
+        weekday: p.weekday ?? undefined,
+        date: p.anchor_date,
+        claimedBy: p.claimed_by ?? undefined,
+        claimedDate: p.claimed_date ?? undefined,
+        completedDates: Array.isArray(p.completed_dates) ? p.completed_dates : [],
+        createdBy: p.created_by ?? '',
+        createdAt: p.created_at,
       })),
       categoryIds: idByKey,
     };
@@ -274,6 +289,21 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       } else if (op.kind === 'thanks_delete') {
         const { error } = await supabase.from('appreciations')
           .delete().eq('household_id', hid).eq('client_id', op.thanksId);
+        if (error) throw error;
+      } else if (op.kind === 'plan_upsert') {
+        const pl = s.plans.find((x) => x.id === op.planId);
+        if (!pl) return true;
+        const { error } = await supabase.from('planned_tasks').upsert({
+          client_id: pl.id, household_id: hid, category_key: pl.categoryKey,
+          title: pl.title ?? null, assigned_member_id: pl.assignedMemberId,
+          repeat: pl.repeat, weekday: pl.weekday ?? null, anchor_date: pl.date,
+          claimed_by: pl.claimedBy ?? null, claimed_date: pl.claimedDate ?? null,
+          completed_dates: pl.completedDates, created_by: pl.createdBy, created_at: pl.createdAt,
+        }, { onConflict: 'client_id' });
+        if (error) throw error;
+      } else if (op.kind === 'plan_delete') {
+        const { error } = await supabase.from('planned_tasks')
+          .delete().eq('household_id', hid).eq('client_id', op.planId);
         if (error) throw error;
       }
       return true;

@@ -1,10 +1,13 @@
 import React, { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryKey, categoryByKey } from '../constants/categories';
-import { copy, currencySymbol, dailyLine } from '../copy/strings';
+import { copy, currencySymbol } from '../copy/strings';
+import { heroGreeting } from '../lib/heroVoice';
 import { fmtHM, inWeekOf, isSameDay, startOfWeek, useHousehold, Task } from '../store/HouseholdStore';
 import { AffirmationCard, Avatar, Card, Chip, IconBadge, PrimaryButton, StatCardCompact } from '../components/ui';
 import { usePhotoPicker } from '../lib/usePhotoPicker';
+import { PlanCard } from '../components/PlanCard';
+import { FLAGS } from '../constants/flags';
 import { Header } from '../components/brand';
 import { colors, fonts, spacing, type } from '../theme/tokens';
 
@@ -46,8 +49,9 @@ function TaskRow({ task, personColour, personName, onEdit, onDelete }: {
   );
 }
 
-export default function TodayScreen({ onAdd, onEdit, onSeeWeek }: {
+export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan }: {
   onAdd: () => void; onEdit: (task: Task) => void; onSeeWeek?: () => void;
+  onLogPlan?: (plan: import('../store/HouseholdStore').PlannedTask, memberId: string) => void;
 }) {
   const { state, deleteTask } = useHousehold();
   const me = state.members.find((m) => m.id === state.meId);
@@ -61,7 +65,7 @@ export default function TodayScreen({ onAdd, onEdit, onSeeWeek }: {
   const totalMin = todayTasks.reduce((s, t) => s + t.durationMin, 0);
   const totalValue = todayTasks.reduce((s, t) => s + t.valueAmount, 0);
   const cur = currencySymbol[state.currency] ?? '';
-  const greetSub = dailyLine();
+  const greetSub = heroGreeting(state.heroStyle);
 
   // "This week so far" — the morning-open view when today is still empty
   const weekStats = useMemo(() => {
@@ -131,6 +135,8 @@ export default function TodayScreen({ onAdd, onEdit, onSeeWeek }: {
                 />
               )}
             </View>
+
+            {FLAGS.planTheDay && onLogPlan && <PlanCard onLogPlan={onLogPlan} />}
 
             {todayTasks.length === 0 ? (
               weekStats.min > 0 ? (

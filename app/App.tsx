@@ -8,7 +8,8 @@ import { HouseholdProvider, useHousehold, Task } from './src/store/HouseholdStor
 import { SyncProvider } from './src/lib/sync';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import TodayScreen from './src/screens/TodayScreen';
-import AddTaskScreen from './src/screens/AddTaskScreen';
+import AddTaskScreen, { PlanPrefill } from './src/screens/AddTaskScreen';
+import QuickLogScreen from './src/screens/QuickLogScreen';
 import WeekScreen from './src/screens/WeekScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ComingSoonScreen from './src/screens/ComingSoonScreen';
@@ -30,6 +31,8 @@ function Shell() {
   const { state } = useHousehold();
   const [tab, setTab] = useState<Tab>('today');
   const [adding, setAdding] = useState(false);
+  const [planPrefill, setPlanPrefill] = useState<PlanPrefill | null>(null);
+  const [quickLogging, setQuickLogging] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
@@ -46,15 +49,23 @@ function Shell() {
   if (!state.householdName) return <OnboardingScreen />;
 
   const overlayOpen = adding || editing !== null;
-  const closeOverlay = () => { setAdding(false); setEditing(null); };
+  const closeOverlay = () => { setAdding(false); setEditing(null); setPlanPrefill(null); setQuickLogging(false); };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
       {tab === 'today' && (
-        <TodayScreen onAdd={() => setAdding(true)} onEdit={(t) => setEditing(t)} onSeeWeek={() => setTab('week')} />
+        <TodayScreen
+          onAdd={() => setAdding(true)}
+          onEdit={(t) => setEditing(t)}
+          onSeeWeek={() => setTab('week')}
+          onLogPlan={(plan, memberId) => {
+            setPlanPrefill({ planId: plan.id, categoryKey: plan.categoryKey, title: plan.title, memberId });
+            setAdding(true);
+          }}
+        />
       )}
       {tab === 'week' && <WeekScreen />}
-      {tab === 'homeValue' && (FLAGS.homeValue ? <HomeValueScreen /> : <ComingSoonScreen kind="homeValue" />)}
+      {tab === 'homeValue' && (FLAGS.homeValue ? <HomeValueScreen onPlan={() => setTab('today')} /> : <ComingSoonScreen kind="homeValue" />)}
       {tab === 'thanks' && (FLAGS.thanks ? <ThanksScreen onToast={showToast} /> : <ComingSoonScreen kind="thanks" />)}
       {tab === 'settings' && <SettingsScreen />}
 
@@ -71,11 +82,17 @@ function Shell() {
 
       {overlayOpen && (
         <View style={StyleSheet.absoluteFill}>
-          <AddTaskScreen
-            key={editing?.id ?? 'new'}
-            editTask={editing}
-            onDone={(msg) => { closeOverlay(); setTab('today'); showToast(msg); }}
-          />
+          {quickLogging ? (
+            <QuickLogScreen onDone={(msg) => { closeOverlay(); setTab('today'); showToast(msg); }} />
+          ) : (
+            <AddTaskScreen
+              key={editing?.id ?? planPrefill?.planId ?? 'new'}
+              editTask={editing}
+              prefill={planPrefill}
+              onQuickLog={() => setQuickLogging(true)}
+              onDone={(msg) => { closeOverlay(); setPlanPrefill(null); setTab('today'); showToast(msg); }}
+            />
+          )}
           <Pressable style={styles.closeBtn} onPress={closeOverlay} accessibilityLabel="Close">
             <Icon name="x" size={20} color={colors.charcoalSoft} />
           </Pressable>
@@ -113,11 +130,11 @@ function TabButton({ label, icon, active, onPress }: {
 
 function AddTabButton({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={styles.tabBtn} accessibilityRole="button" accessibilityLabel="Add task">
+    <Pressable onPress={onPress} style={styles.tabBtn} accessibilityRole="button" accessibilityLabel={FLAGS.quickLog ? 'Log work' : 'Add task'}>
       <View style={styles.addCircle}>
         <Icon name="plus" size={20} color="#FFFFFF" strokeWidth={2.6} />
       </View>
-      <Text style={[type.caption, { fontSize: 11, color: colors.charcoalSoft }]}>Add</Text>
+      <Text style={[type.caption, { fontSize: 11, color: colors.charcoalSoft }]}>{FLAGS.quickLog ? 'Log' : 'Add'}</Text>
     </Pressable>
   );
 }

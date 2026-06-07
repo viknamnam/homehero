@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "HomeHero",
+    "name": "HeroNest",
     "slug": "homehero",
     "version": "0.1.0",
     "orientation": "portrait",
-    "scheme": "homehero",
+    "scheme": "heronest",
     "userInterfaceStyle": "light",
     "backgroundColor": "#FAF6F0",
     "splash": {
@@ -14,10 +14,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.namavira.homehero"
+      "bundleIdentifier": "com.namavira.heronest"
     },
     "android": {
-      "package": "com.namavira.homehero",
+      "package": "com.namavira.heronest",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#C94F3D"

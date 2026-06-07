@@ -3,6 +3,7 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CATEGORIES, CategoryKey } from '../constants/categories';
+import type { HeroStyle } from '../lib/heroVoice';
 import { personColours } from '../theme/tokens';
 
 // ---------- Types ----------
@@ -35,13 +36,33 @@ export interface Thanks {
   createdAt: string;
 }
 
+// Plan the Day (gaps #13): anyone can add a plan, assign it to someone OR leave it
+// open for whoever's free ("I'll do it"). No dispatcher role — assignment and
+// claiming are both first-class. Local-first; cloud sync gates the flag flip.
+export interface PlannedTask {
+  id: string;
+  categoryKey: CategoryKey;
+  title?: string;
+  assignedMemberId: string | null;   // null = open to anyone
+  repeat: 'none' | 'daily' | 'weekly';
+  weekday?: number;                  // 0-6, for weekly
+  date: string;                      // anchor day (ISO) for one-off plans
+  claimedBy?: string;
+  claimedDate?: string;              // claims apply to a single day
+  completedDates: string[];
+  createdBy: string;
+  createdAt: string;
+}
+
 export type PendingOp =
   | { id: string; kind: 'task_upsert'; taskId: string }
   | { id: string; kind: 'task_delete'; taskId: string }
   | { id: string; kind: 'household_update' }
   | { id: string; kind: 'rate_update'; categoryKey: CategoryKey }
   | { id: string; kind: 'thanks_upsert'; thanksId: string }
-  | { id: string; kind: 'thanks_delete'; thanksId: string };
+  | { id: string; kind: 'thanks_delete'; thanksId: string }
+  | { id: string; kind: 'plan_upsert'; planId: string }
+  | { id: string; kind: 'plan_delete'; planId: string };
 
 export interface CloudState {
   householdId: string | null;
@@ -60,6 +81,8 @@ export interface HouseholdState {
   tasks: Task[];
   logDurationsMs: number[];
   thanks: Thanks[];
+  plans: PlannedTask[];
+  heroStyle: HeroStyle;
   cloud: CloudState;
 }
 
@@ -86,6 +109,8 @@ const initialState: HouseholdState = {
   tasks: [],
   logDurationsMs: [],
   thanks: [],
+  plans: [],
+  heroStyle: 'bright',
   cloud: initialCloud,
 };
 
@@ -102,6 +127,7 @@ export interface PullPayload {
   rates: Record<CategoryKey, number>;
   tasks: Task[];
   thanks: Thanks[];
+  plans: PlannedTask[];
   categoryIds: Partial<Record<CategoryKey, string>>;
 }
 
@@ -119,6 +145,11 @@ type Action =
   | { type: 'SET_MEMBER_AVATAR'; memberId: string; avatarUrl: string }
   | { type: 'ADD_THANKS'; thanks: Thanks }
   | { type: 'DELETE_THANKS'; id: string }
+  | { type: 'ADD_PLAN'; plan: PlannedTask }
+  | { type: 'DELETE_PLAN'; id: string }
+  | { type: 'CLAIM_PLAN'; id: string; memberId: string; date: string }
+  | { type: 'COMPLETE_PLAN'; id: string; date: string }
+  | { type: 'SET_HERO_STYLE'; style: HeroStyle }
   | { type: 'ENQUEUE'; op: PendingOp }
   | { type: 'DEQUEUE'; opIds: string[] }
   | { type: 'RELINK_MEMBERS'; idMap: Record<string, string>; members: Member[]; meId: string }
@@ -169,6 +200,20 @@ function reducer(state: HouseholdState, action: Action): HouseholdState {
       return { ...state, thanks: [action.thanks, ...state.thanks] };
     case 'DELETE_THANKS':
       return { ...state, thanks: state.thanks.filter((t) => t.id !== action.id) };
+    case 'SET_HERO_STYLE':
+      return { ...state, heroStyle: action.style };
+    case 'ADD_PLAN':
+      return { ...state, plans: [action.plan, ...state.plans] };
+    case 'DELETE_PLAN':
+      return { ...state, plans: state.plans.filter((p) => p.id !== action.id) };
+    case 'CLAIM_PLAN':
+      return { ...state, plans: state.plans.map((p) =>
+        p.id === action.id ? { ...p, claimedBy: action.memberId, claimedDate: action.date } : p) };
+    case 'COMPLETE_PLAN':
+      return { ...state, plans: state.plans.map((p) =>
+        p.id === action.id && !p.completedDates.includes(action.date)
+          ? { ...p, completedDates: [...p.completedDates, action.date], claimedBy: undefined, claimedDate: undefined }
+          : (p.repeat === 'none' && p.id === action.id ? p : p)) };
     case 'ENQUEUE': {
       // collapse duplicate ops targeting the same record
       const dup = (o: PendingOp) =>
@@ -208,6 +253,13 @@ function reducer(state: HouseholdState, action: Action): HouseholdState {
       );
       const localPending = state.tasks.filter((t) => pendingTaskIds.has(t.id));
       const pulled = p.tasks.filter((t) => !pendingTaskIds.has(t.id));
+      const pendingPlanIds = new Set(
+        state.cloud.pendingOps
+          .filter((o): o is Extract<PendingOp, { planId: string }> => 'planId' in o)
+          .map((o) => o.planId),
+      );
+      const localPendingPlans = state.plans.filter((pl) => pendingPlanIds.has(pl.id));
+      const pulledPlans = (p.plans ?? []).filter((pl) => !pendingPlanIds.has(pl.id));
       return {
         ...state,
         householdName: p.householdName,
@@ -217,6 +269,8 @@ function reducer(state: HouseholdState, action: Action): HouseholdState {
         members: p.members,
         rates: p.rates,
         tasks: [...localPending, ...pulled].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
+        thanks: p.thanks,
+        plans: [...localPendingPlans, ...pulledPlans],
         cloud: {
           ...state.cloud,
           householdId: p.householdId,
@@ -250,6 +304,11 @@ interface StoreApi {
   deleteTask: (id: string) => void;
   sendThanks: (input: { toMemberId: string; categoryKey?: CategoryKey; note?: string }) => void;
   deleteThanks: (id: string) => void;
+  addPlan: (input: { categoryKey: CategoryKey; title?: string; assignedMemberId: string | null; repeat: 'none' | 'daily' | 'weekly' }) => void;
+  deletePlan: (id: string) => void;
+  claimPlan: (id: string) => void;
+  completePlan: (id: string) => void;
+  setHeroStyle: (style: HeroStyle) => void;
   setHideMoney: (v: boolean) => void;
   setCurrency: (c: string) => void;
   setRate: (key: CategoryKey, rate: number) => void;
@@ -347,6 +406,33 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'DELETE_THANKS', id });
         enqueue({ kind: 'thanks_delete', thanksId: id } as any);
       },
+      addPlan: ({ categoryKey, title, assignedMemberId, repeat }) => {
+        if (!state.meId) return;
+        const now = new Date();
+        const planId = uid();
+        dispatch({ type: 'ADD_PLAN', plan: {
+          id: planId, categoryKey, title: title?.trim() || undefined,
+          assignedMemberId, repeat,
+          weekday: repeat === 'weekly' ? now.getDay() : undefined,
+          date: now.toISOString().slice(0, 10),
+          completedDates: [], createdBy: state.meId, createdAt: now.toISOString(),
+        } });
+        enqueue({ kind: 'plan_upsert', planId } as any);
+      },
+      deletePlan: (id) => {
+        dispatch({ type: 'DELETE_PLAN', id });
+        enqueue({ kind: 'plan_delete', planId: id } as any);
+      },
+      claimPlan: (id) => {
+        if (!state.meId) return;
+        dispatch({ type: 'CLAIM_PLAN', id, memberId: state.meId, date: new Date().toISOString().slice(0, 10) });
+        enqueue({ kind: 'plan_upsert', planId: id } as any);
+      },
+      completePlan: (id) => {
+        dispatch({ type: 'COMPLETE_PLAN', id, date: new Date().toISOString().slice(0, 10) });
+        enqueue({ kind: 'plan_upsert', planId: id } as any);
+      },
+      setHeroStyle: (style) => dispatch({ type: 'SET_HERO_STYLE', style }),
       setHideMoney: (v) => { dispatch({ type: 'SET_HIDE_MONEY', value: v }); enqueue({ kind: 'household_update' } as any); },
       setCurrency: (c) => { dispatch({ type: 'SET_CURRENCY', currency: c }); enqueue({ kind: 'household_update' } as any); },
       setRate: (key, rate) => { dispatch({ type: 'SET_RATE', key, rate }); enqueue({ kind: 'rate_update', categoryKey: key } as any); },

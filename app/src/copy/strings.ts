@@ -3,7 +3,7 @@
 
 export const copy = {
   onboarding: {
-    welcomeTitle: 'Welcome to HomeHero',
+    welcomeTitle: 'Welcome to HeroNest',
     welcomeSub: 'See the work. Share the load.',
     createHousehold: "Let's set up your home",
     householdHint: 'The Khan family · Flat 7 crew · whatever feels like you',
@@ -11,7 +11,7 @@ export const copy = {
     addPartner: 'Add another adult (optional — they can join later by invite)',
     currencyTitle: 'Your currency',
     valueIntro:
-      'HomeHero can estimate the value of household work — a way to make invisible effort visible. You can hide it anytime in Settings.',
+      'HeroNest can estimate the value of household work — a way to make invisible effort visible. You can hide it anytime in Settings.',
     startCta: 'Create our home',
     firstTaskPrompt: 'Log your first task — even small things count.',
   },
@@ -86,6 +86,32 @@ export const copy = {
     winLine: (from: string, to: string) => `${from} thanked ${to}`,
     winGeneric: 'for helping the team',
   },
+  quickLog: {
+    title: 'Quick Log',
+    sub: "Tell HeroNest what happened. We'll turn it into tasks.",
+    placeholder: 'e.g. I packed lunches, drove the kids to football, and ordered groceries…',
+    parseCta: 'Turn it into tasks',
+    parsing: 'Reading…',
+    unreachable: "Couldn't reach the helper right now — you can still add tasks the usual way.",
+    found: (n: number) => `Found ${n} ${n === 1 ? 'task' : 'tasks'} — does this look right?`,
+    none: 'No household tasks found in that — try describing what you did.',
+    saveAll: (n: number) => `Save ${n === 1 ? 'it' : `all ${n}`}`,
+    editHint: 'You can fine-tune any task afterwards from Today.',
+  },
+  plan: {
+    title: "Today's plan",
+    empty: 'Nothing planned yet — add something the team can pick up.',
+    open: 'Open — anyone can take it',
+    takenBy: (name: string) => `Taken by ${name}`,
+    claimCta: "I'll do it",
+    doneCta: 'Done ✓',
+    composerCta: '＋ Plan something for today',
+    titleHint: 'Add a short note (optional)',
+    anyone: 'Anyone',
+    repeatLabels: { none: 'Just today', daily: 'Every day', weekly: 'Weekly' } as Record<string, string>,
+    repeatBadge: { daily: 'daily', weekly: 'weekly' } as Record<string, string>,
+    addCta: 'Add to plan',
+  },
   photo: {
     title: 'Update photo',
     camera: 'Take a photo',
@@ -148,6 +174,8 @@ export const copy = {
     currencyTitle: 'Currency',
     membersTitle: 'Household members',
     editPhoto: 'Edit photo',
+    voiceTitle: 'Hero Voice',
+    voiceSub: 'How HeroNest talks to your family. Change it anytime.',
     dataTitle: 'Your data',
     dataSub: 'Your household data belongs to your family — take a copy or remove it any time.',
     exportCta: 'Export household data',
@@ -174,7 +202,7 @@ export const copy = {
     inviteTitle: 'Invite your family',
     inviteCta: 'Create invite code',
     inviteShare: (code: string) =>
-      `Join our home on HomeHero 💛 Open the app, choose "Join with invite", and enter code: ${code} (valid 7 days)`,
+      `Join our home on HeroNest 🪺 Open the app, choose "Join with invite", and enter code: ${code} (valid 7 days)`,
     syncNow: 'Sync now',
     lastSync: (when: string) => `Last synced ${when}`,
     pending: (n: number) => `${n} change${n === 1 ? '' : 's'} waiting to sync — safe and will upload automatically.`,
