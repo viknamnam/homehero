@@ -39,6 +39,10 @@ interface SyncApi {
   setHeroAvatar: (key: string, memberId?: string) => Promise<boolean>;
   /** Create a child profile (Kids Mode). Cloud households must be online — see Gaps register. */
   addChildMember: (name: string) => Promise<boolean>;
+  /** Rename a member (self or a child). Local-first; cloud display_name follows. */
+  renameMember: (memberId: string, name: string) => Promise<boolean>;
+  /** Remove an UNLINKED member (child / placeholder) and their data. Cloud households need to be online. */
+  removeMember: (memberId: string) => Promise<boolean>;
   /** Delete the household everywhere (cloud cascade) and reset this device. */
   deleteHousehold: () => Promise<boolean>;
 }
@@ -506,6 +510,41 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session, dispatch]);
 
+  const removeMember = useCallback(async (memberId: string): Promise<boolean> => {
+    const s = stateRef.current;
+    const target = s.members.find((m) => m.id === memberId);
+    if (!target || target.linked || memberId === s.meId) return false;
+    if (!s.cloud.householdId) {
+      dispatch({ type: 'REMOVE_MEMBER', memberId });
+      return true;
+    }
+    // Cloud household: server first (RPC removes member + their data atomically),
+    // local after — mirrors addChildMember's online requirement so a pull can't
+    // resurrect a half-removed member.
+    if (!supabase || !session) return fail(new Error('Connect to the internet to remove a member.'));
+    try {
+      const { error } = await supabase.rpc('remove_member', { p_member_id: memberId });
+      if (error) throw error;
+      dispatch({ type: 'REMOVE_MEMBER', memberId });
+      return true;
+    } catch (e) { return fail(e); }
+  }, [session, dispatch]);
+
+  const renameMember = useCallback(async (memberId: string, name: string): Promise<boolean> => {
+    const s = stateRef.current;
+    const trimmed = name.trim();
+    if (!trimmed || !memberId) return false;
+    dispatch({ type: 'RENAME_MEMBER', memberId, name: trimmed });
+    if (!supabase || !session || !s.cloud.householdId) return true;
+    try {
+      const { error } = await supabase.from('members').update({ display_name: trimmed }).eq('id', memberId);
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      return fail(e); // pull reconciles; local rename stays visible meanwhile
+    }
+  }, [session, dispatch]);
+
   // Kid profiles: no email, no auth account — a member row with role 'child',
   // device-shared with an adult. Cloud households must be ONLINE to add one
   // (a local-only insert would be wiped by the next pull); fully-local
@@ -545,7 +584,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     cloudEnabled: isCloudEnabled,
     session, busy, lastError,
     sendCode, verifyCode, signOut,
-    pullMyHousehold, uploadHousehold, joinWithInvite, createInvite, syncNow, uploadAvatar, setHeroAvatar, addChildMember, deleteHousehold,
+    pullMyHousehold, uploadHousehold, joinWithInvite, createInvite, syncNow, uploadAvatar, setHeroAvatar, addChildMember, renameMember, removeMember, deleteHousehold,
   };
 
   return <SyncContext.Provider value={api}>{children}</SyncContext.Provider>;

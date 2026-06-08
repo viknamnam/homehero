@@ -87,6 +87,7 @@ export const copy = {
     winGeneric: 'for helping the team',
   },
   quickLog: {
+    offlineNote: "Couldn't reach the smart helper — these are rough guesses. Check the details before saving.",
     title: 'Quick Log',
     sub: "Tell HeroNest what happened. We'll turn it into tasks.",
     // Add Task entry-point pill (Jun 2026 design pass): a real button, not a text link
@@ -219,8 +220,9 @@ export const copy = {
     badgeTidy: 'Tidy Star',
     badgeTeam: 'Team Player',
     badgeNext: 'Next up!',
+    starterPet: 'Feed the pet',
     badgeProgress: (n: number, need: number) => `${n} of ${need}`,
-    starters: ['Make my bed', 'Feed the pet', 'Clear the table', 'Tidy my room'],
+    starters: ['Make my bed', 'Clear the table', 'Tidy my room', 'Help sort the laundry'],
     affirmTitle: (n: number) => n > 0 ? `You helped ${n} ${n === 1 ? 'time' : 'times'} this week!` : 'Ready to help the team?',
     affirmSub: "Keep it up, you're a true hero! 💪",
     helpedCta: 'I helped!',
@@ -455,6 +457,11 @@ export const copy = {
     // Kids Mode additions
     addChildCta: '＋ Add a child',
     addChildBusy: 'Setting up their nest…',
+    renameTitle: 'Change name',
+    renameSave: 'Save name',
+    renameBusy: 'Updating…',
+    removeCta: (name: string) => `Remove ${name} from the household`,
+    removeConfirm: 'Tap again — this also removes their logged tasks',
     addChildHint: "Their name (no email needed — they share a grown-up's device)",
     addChildSave: 'Create profile',
     addChildOffline: 'Connect to the internet to add a family member.',
@@ -504,7 +511,10 @@ export const copy = {
     inviteCopy: 'Copy code',
     inviteCopied: 'Copied ✓',
     inviteTitle: 'Invite your family',
-    inviteCta: 'Create invite code',
+    inviteCta: 'Create code',
+    inviteOnePer: 'One code per person — each works once and expires in 48 hours.',
+    inviteNext: '＋ Code for the next person',
+    inviteDone: 'Done',
     inviteShare: (code: string) =>
       `Join our home on HeroNest 🪺 Open the app, choose "Join with invite", and enter code: ${code} (valid 7 days)`,
     syncNow: 'Sync now',

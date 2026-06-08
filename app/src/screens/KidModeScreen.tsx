@@ -26,7 +26,7 @@ const KID_TASK_MINUTES = 10;
 // Starter missions (founder request): standard jobs every kid can do TODAY,
 // no adult assignment needed. Adults add more via Plan the Day; these are the
 // always-there floor. Done-state = a matching task logged by this kid today.
-const STARTER_CATEGORIES: CategoryKey[] = ['cleaning', 'pets', 'cooking', 'cleaning'];
+const STARTER_CATEGORIES: CategoryKey[] = ['cleaning', 'cooking', 'cleaning', 'laundry'];
 const POINTS_PER_TASK = 25;
 // Kid-friendly category subset: concrete, doable jobs (no Planning/Admin etc.)
 const KID_CATEGORIES: CategoryKey[] = [
@@ -106,11 +106,25 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
     [state.plans, childId],
   );
 
-  const starters = useMemo(() => copy.kids.starters.map((title, i) => ({
-    title,
-    categoryKey: STARTER_CATEGORIES[i] ?? ('cleaning' as CategoryKey),
-    done: myTasks.some((t) => isSameDay(t.occurredAt, today) && t.title === title),
-  })), [myTasks]);
+  // Pet mission only for households that actually log pet care (founder fix:
+  // not everyone has a pet — defaults must be universal)
+  const householdHasPets = useMemo(
+    () => state.tasks.some((t) => t.categoryKey === 'pets') || state.plans.some((p) => p.categoryKey === 'pets'),
+    [state.tasks, state.plans],
+  );
+  const starters = useMemo(() => {
+    const base = copy.kids.starters.map((title, i) => ({
+      title,
+      categoryKey: STARTER_CATEGORIES[i] ?? ('cleaning' as CategoryKey),
+    }));
+    const list = householdHasPets
+      ? [...base, { title: copy.kids.starterPet, categoryKey: 'pets' as CategoryKey }]
+      : base;
+    return list.map((st) => ({
+      ...st,
+      done: myTasks.some((t) => isSameDay(t.occurredAt, today) && t.title === st.title),
+    }));
+  }, [myTasks, householdHasPets]);
   const startersLeft = starters.filter((st) => !st.done).length;
 
   const doneToday = myTasks.filter((t) => isSameDay(t.occurredAt, today)).length;

@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { categoryByKey } from '../constants/categories';
 import { copy } from '../copy/strings';
 import { heroLineRandom } from '../lib/heroVoice';
-import { ParsedTask, parseQuickLog } from '../lib/quickLog';
+import { ParsedTask, offlineParse, parseQuickLog } from '../lib/quickLog';
 import { speech } from '../lib/speech';
 import { FLAGS } from '../constants/flags';
 import { useHousehold } from '../store/HouseholdStore';
@@ -24,6 +24,7 @@ export default function QuickLogScreen({ onDone }: { onDone: (toast: string) => 
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [cards, setCards] = useState<ParsedTask[] | null>(null);
+  const [offlineGuess, setOfflineGuess] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
   const [listening, setListening] = useState(false);
   const [micNote, setMicNote] = useState<string | null>(null);
@@ -64,11 +65,14 @@ export default function QuickLogScreen({ onDone }: { onDone: (toast: string) => 
 
   const parse = async () => {
     if (listening) speech.stop();
-    setBusy(true); setUnreachable(false);
+    setBusy(true); setUnreachable(false); setOfflineGuess(false);
     const tasks = await parseQuickLog(text.trim());
     setBusy(false);
-    if (!tasks) { setUnreachable(true); return; }
-    setCards(tasks);
+    if (tasks) { setCards(tasks); return; }
+    // Function unreachable -> honest offline guess, same review step
+    const guess = offlineParse(text.trim());
+    if (guess.length > 0) { setCards(guess); setOfflineGuess(true); return; }
+    setUnreachable(true);
   };
 
   const saveAll = () => {
@@ -127,6 +131,11 @@ export default function QuickLogScreen({ onDone }: { onDone: (toast: string) => 
       {busy && <ActivityIndicator style={{ marginTop: spacing.m }} color={colors.coralDeep} />}
       {unreachable && <Text style={[type.caption, { marginTop: spacing.m, color: colors.coralDeep }]}>{copy.quickLog.unreachable}</Text>}
 
+      {cards && offlineGuess && (
+        <Text style={[type.caption, { marginTop: spacing.m, color: colors.charcoalSoft }]}>
+          {copy.quickLog.offlineNote}
+        </Text>
+      )}
       {cards && (
         <View style={{ marginTop: spacing.l }}>
           <Text style={type.h2}>{cards.length > 0 ? copy.quickLog.found(cards.length) : copy.quickLog.none}</Text>

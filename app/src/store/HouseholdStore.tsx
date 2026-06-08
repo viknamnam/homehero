@@ -153,6 +153,8 @@ type Action =
   | { type: 'RESET_LOG_MS' }
   | { type: 'SET_MEMBER_AVATAR'; memberId: string; avatarUrl: string }
   | { type: 'ADD_MEMBER'; member: Member }
+  | { type: 'RENAME_MEMBER'; memberId: string; name: string }
+  | { type: 'REMOVE_MEMBER'; memberId: string }
   | { type: 'ADD_THANKS'; thanks: Thanks }
   | { type: 'DELETE_THANKS'; id: string }
   | { type: 'ADD_PLAN'; plan: PlannedTask }
@@ -204,6 +206,23 @@ function reducer(state: HouseholdState, action: Action): HouseholdState {
       return { ...state, logDurationsMs: [] };
     case 'ADD_MEMBER':
       return { ...state, members: [...state.members, action.member] };
+    case 'RENAME_MEMBER':
+      return {
+        ...state,
+        members: state.members.map((m) => m.id === action.memberId ? { ...m, name: action.name } : m),
+      };
+    case 'REMOVE_MEMBER':
+      return {
+        ...state,
+        members: state.members.filter((m) => m.id !== action.memberId),
+        tasks: state.tasks.filter((t) => t.memberId !== action.memberId),
+        thanks: state.thanks.filter((t) => t.fromMemberId !== action.memberId && t.toMemberId !== action.memberId),
+        plans: state.plans.map((p) => ({
+          ...p,
+          assignedMemberId: p.assignedMemberId === action.memberId ? null : p.assignedMemberId,
+          claimedBy: p.claimedBy === action.memberId ? undefined : p.claimedBy,
+        })),
+      };
     case 'SET_MEMBER_AVATAR':
       return {
         ...state,

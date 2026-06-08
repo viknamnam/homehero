@@ -16,7 +16,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Avatar, BusyButton, Card, Chip, PrimaryButton } from '../components/ui';
 import { Icon } from '../components/icons';
 import { Header, LogoLoader } from '../components/brand';
-import { colors, spacing, type } from '../theme/tokens';
+import { colors, spacing, type, radius, shadow } from '../theme/tokens';
 
 const CURRENCIES = ['AED', 'USD', 'EUR', 'GBP'];
 
@@ -130,26 +130,43 @@ function SyncCard() {
               : ''}
           </Text>
 
-          <Text style={[type.label, { marginTop: spacing.l }]}>{copy.sync.inviteTitle}</Text>
-          {inviteCode ? (
+          {/* Invite section (founder UX pass): collapsed = ONE row, title +
+              button, no redundant sub-line. Expanded = QR/code with a clear
+              one-code-per-person rule, "New code" for the next person, and a
+              Done to put it away without leaving Settings. */}
+          {!inviteCode ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.l, minHeight: 40 }}>
+              <Text style={[type.label, { flex: 1 }]}>{copy.sync.inviteTitle}</Text>
+              <Pressable
+                onPress={async () => {
+                  setInviteBusy(true);
+                  setInviteCode(await sync.createInvite());
+                  setInviteCopied(false);
+                  setInviteBusy(false);
+                }}
+                accessibilityRole="button"
+                style={styles.invitePill}
+              >
+                {inviteBusy
+                  ? <LogoLoader size={20} label={copy.sync.inviteBusy} />
+                  : <Text style={[type.label, { color: colors.surface }]}>{copy.sync.inviteCta}</Text>}
+              </Pressable>
+            </View>
+          ) : (
             <View style={styles.inviteBox}>
-              {/* QR encodes the join LINK: phone cameras scan it straight into
-                  the app (deep link) — or the web fallback if not installed.
-                  The link is also shareable by message; the code stays for
-                  good old reading-it-out-loud. */}
               <View style={{ alignItems: 'center', marginBottom: spacing.m }}>
                 <View style={{ backgroundColor: '#FFFFFF', padding: spacing.m, borderRadius: 12 }}>
                   <QRCode value={joinUrlFor(inviteCode)} size={132} color={colors.charcoal} backgroundColor="#FFFFFF" />
                 </View>
                 <Text style={[type.caption, { marginTop: spacing.s }]}>{copy.sync.inviteScanHint}</Text>
               </View>
-              <Text style={[type.display, { letterSpacing: 4 }]}>{inviteCode}</Text>
+              <Text style={[type.display, { letterSpacing: 4, textAlign: 'center' }]}>{inviteCode}</Text>
               <Pressable
                 onPress={async () => {
                   await Clipboard.setStringAsync(copy.sync.inviteShareText(inviteCode, joinUrlFor(inviteCode)));
                   setInviteCopied(true);
                 }}
-                style={{ marginTop: spacing.s }}
+                style={{ marginTop: spacing.s, minHeight: 36, justifyContent: 'center' }}
                 accessibilityRole="button"
               >
                 <Text style={[type.label, { color: colors.coralDeep, textAlign: 'center' }]}>
@@ -157,22 +174,32 @@ function SyncCard() {
                 </Text>
               </Pressable>
               <Text style={[type.caption, { marginTop: spacing.s, textAlign: 'center' }]}>
-                {copy.sync.inviteShare(inviteCode)}
+                {copy.sync.inviteOnePer}
               </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: spacing.m }}>
+                <Pressable
+                  onPress={async () => {
+                    setInviteBusy(true);
+                    setInviteCode(await sync.createInvite());
+                    setInviteCopied(false);
+                    setInviteBusy(false);
+                  }}
+                  accessibilityRole="button"
+                  style={{ minHeight: 44, justifyContent: 'center', marginRight: spacing.xl }}
+                >
+                  {inviteBusy
+                    ? <LogoLoader size={20} label={copy.sync.inviteBusy} />
+                    : <Text style={[type.label, { color: colors.coralDeep }]}>{copy.sync.inviteNext}</Text>}
+                </Pressable>
+                <Pressable
+                  onPress={() => { setInviteCode(null); setInviteCopied(false); }}
+                  accessibilityRole="button"
+                  style={{ minHeight: 44, justifyContent: 'center' }}
+                >
+                  <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.sync.inviteDone}</Text>
+                </Pressable>
+              </View>
             </View>
-          ) : (
-            <Pressable
-              style={{ marginTop: spacing.s }}
-              onPress={async () => {
-                setInviteBusy(true);
-                setInviteCode(await sync.createInvite());
-                setInviteBusy(false);
-              }}
-            >
-              {inviteBusy
-                ? <LogoLoader size={22} label={copy.sync.inviteBusy} />
-                : <Text style={[type.label, { color: colors.coralDeep }]}>{copy.sync.inviteCta}</Text>}
-            </Pressable>
           )}
 
           <View style={{ flexDirection: 'row', marginTop: spacing.l }}>
@@ -228,6 +255,20 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
   const [childName, setChildName] = useState('');
   const [childError, setChildError] = useState(false);
   const [childAvatarFor, setChildAvatarFor] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const removeRenaming = async () => {
+    if (!renaming) return;
+    const ok = await sync.removeMember(renaming.id);
+    if (ok) { setRenaming(null); setConfirmingRemove(false); }
+  };
+
+  const saveRename = async () => {
+    if (!renaming) return;
+    const ok = await sync.renameMember(renaming.id, renaming.name);
+    if (ok) { setRenaming(null); setConfirmingRemove(false); }
+  };
 
   const saveChild = async () => {
     setChildError(false);
@@ -290,8 +331,16 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
                   accessibilityLabel={isChild ? copy.photo.heroTitle : mine && canEditPhoto ? copy.settings.editPhoto : m.name}
                 >
                   <Avatar name={m.name} colour={m.colour} size={48} avatarUrl={m.avatarUrl} memberId={m.id} />
+                </Pressable>
+                <Pressable
+                  disabled={!(mine || isChild)}
+                  onPress={() => setRenaming({ id: m.id, name: m.name })}
+                  hitSlop={6}
+                  accessibilityRole={mine || isChild ? 'button' : undefined}
+                  accessibilityLabel={mine || isChild ? copy.settings.renameTitle : undefined}
+                >
                   <Text style={[type.caption, { marginTop: spacing.xs }]}>
-                    {m.name}{isChild ? ` · ${copy.settings.kidBadge}` : ''}
+                    {m.name}{isChild ? ` · ${copy.settings.kidBadge}` : ''}{(mine || isChild) ? ' ✎' : ''}
                   </Text>
                   {mine && canEditPhoto && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
@@ -505,6 +554,42 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
         photosAvailable={canUploadPhoto}
       />
       <HeroAvatarPicker visible={avatarPickerVisible} onPick={pickHeroAvatar} onClose={closeAvatarPicker} />
+      {renaming && (
+        <Pressable style={styles.renameBackdrop} onPress={() => setRenaming(null)}>
+          <Pressable style={styles.renameSheet} onPress={() => {}}>
+            <Text style={[type.h2, { textAlign: 'center' }]}>{copy.settings.renameTitle}</Text>
+            <TextInput
+              style={styles.syncInput}
+              value={renaming.name}
+              onChangeText={(v) => setRenaming({ ...renaming, name: v })}
+              autoFocus
+            />
+            <View style={{ marginTop: spacing.m }}>
+              <BusyButton
+                label={copy.settings.renameSave}
+                busyLabel={copy.settings.renameBusy}
+                onPress={saveRename}
+                disabled={!renaming.name.trim()}
+              />
+            </View>
+            <Pressable onPress={() => { setRenaming(null); setConfirmingRemove(false); }} style={{ alignItems: 'center', marginTop: spacing.s, minHeight: 44, justifyContent: 'center' }}>
+              <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.photo.cancel}</Text>
+            </Pressable>
+            {renaming.id !== state.meId && !state.members.find((m) => m.id === renaming.id)?.linked && (
+              <Pressable
+                onPress={() => (confirmingRemove ? void removeRenaming() : setConfirmingRemove(true))}
+                style={{ alignItems: 'center', marginTop: spacing.s, minHeight: 44, justifyContent: 'center' }}
+                accessibilityRole="button"
+              >
+                <Text style={[type.label, { color: colors.coralDeep }]}>
+                  {confirmingRemove ? copy.settings.removeConfirm : copy.settings.removeCta(renaming.name.trim() || '')}
+                </Text>
+              </Pressable>
+            )}
+          </Pressable>
+        </Pressable>
+      )}
+
       <HeroAvatarPicker
         visible={childAvatarFor !== null}
         onPick={(key) => { const id = childAvatarFor; setChildAvatarFor(null); if (id) void sync.setHeroAvatar(key, id); }}
@@ -520,6 +605,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warmWhite, borderRadius: 12, borderWidth: 1,
     borderColor: colors.mist, padding: spacing.m, marginTop: spacing.m,
     fontSize: 16, color: colors.charcoal,
+  },
+  renameBackdrop: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(46, 53, 72, 0.35)', justifyContent: 'center', paddingHorizontal: spacing.xl,
+  },
+  renameSheet: {
+    backgroundColor: colors.warmWhite, borderRadius: 20,
+    padding: spacing.xl, ...shadow.card,
+  },
+  invitePill: {
+    backgroundColor: colors.coral, borderRadius: radius.chip,
+    paddingHorizontal: spacing.l, minHeight: 38, justifyContent: 'center', ...shadow.card,
   },
   inviteBox: {
     backgroundColor: colors.sageTint, borderRadius: 12,
