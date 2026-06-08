@@ -2,7 +2,7 @@
   "expo": {
     "name": "HeroNest",
     "slug": "homehero",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "heronest",
     "userInterfaceStyle": "light",
@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.namavira.heronest"
+      "bundleIdentifier": "com.namavira.heronest",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.namavira.heronest",
@@ -40,7 +43,15 @@
           "microphonePermission": "HeroNest uses the microphone so you can speak your tasks instead of typing them.",
           "speechRecognitionPermission": "HeroNest uses on-device speech recognition to turn your words into tasks."
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "HeroNest lets you choose a profile photo for a family member.",
+          "cameraPermission": "HeroNest lets you take a profile photo for a family member."
+        }
+      ],
+      "expo-notifications"
     ]
   }
 }

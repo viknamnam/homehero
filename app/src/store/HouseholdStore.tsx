@@ -92,6 +92,10 @@ export interface HouseholdState {
   // Notification prefs (#61) — per-device, local-only by nature
   thanksPushEnabled?: boolean;
   weeklyDigestEnabled?: boolean;
+  // Entitlement (#50) — mirrored from the cloud household
+  householdCreatedAt?: string | null;
+  premiumUntil?: string | null;
+  grandfathered?: boolean;
   cloud: CloudState;
 }
 
@@ -133,6 +137,9 @@ export interface PullPayload {
   hideMoney: boolean;
   pocketMoneyEnabled?: boolean;
   pocketPointsPerUnit?: number;
+  householdCreatedAt?: string | null;
+  premiumUntil?: string | null;
+  grandfathered?: boolean;
   meId: string;
   members: Member[];
   rates: Record<CategoryKey, number>;
@@ -310,6 +317,9 @@ function reducer(state: HouseholdState, action: Action): HouseholdState {
         hideMoney: p.hideMoney,
         pocketMoneyEnabled: p.pocketMoneyEnabled ?? state.pocketMoneyEnabled,
         pocketPointsPerUnit: p.pocketPointsPerUnit ?? state.pocketPointsPerUnit,
+        householdCreatedAt: p.householdCreatedAt ?? state.householdCreatedAt,
+        premiumUntil: p.premiumUntil ?? null,
+        grandfathered: p.grandfathered ?? state.grandfathered,
         meId: p.meId,
         members: p.members,
         rates: p.rates,

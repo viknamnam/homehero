@@ -9,7 +9,7 @@ import { usePhotoPicker } from '../lib/usePhotoPicker';
 import { FLAGS } from '../constants/flags';
 import { cancelWeeklyDigest, disableThanksPush, enableThanksPush, notificationsAvailable, scheduleWeeklyDigest } from '../lib/notifications';
 import QRCode from 'react-native-qrcode-svg';
-import { joinUrlFor } from '../lib/joinLink';
+import { joinUrlFor, kidUrlFor } from '../lib/joinLink';
 import { HeroAvatarPicker } from '../components/HeroAvatars';
 import { AvatarMenuSheet } from '../components/AvatarMenu';
 import * as Clipboard from 'expo-clipboard';
@@ -21,7 +21,7 @@ import { colors, spacing, type, radius, shadow } from '../theme/tokens';
 const CURRENCIES = ['AED', 'USD', 'EUR', 'GBP'];
 
 function SyncCard() {
-  const { state } = useHousehold();
+  const { state, reset } = useHousehold();
   const sync = useSync();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -31,6 +31,7 @@ function SyncCard() {
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
 
   if (!sync.cloudEnabled) return null;
   const linked = !!state.cloud.householdId;
@@ -208,10 +209,24 @@ function SyncCard() {
                 {sync.busy ? copy.sync.syncing : copy.sync.syncNow}
               </Text>
             </Pressable>
-            <Pressable onPress={() => sync.signOut()}>
-              <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.sync.signOut}</Text>
+            <Pressable
+              onPress={async () => {
+                if (!confirmingSignOut) { setConfirmingSignOut(true); return; }
+                try { await sync.syncNow(); } catch {}
+                await sync.signOut();
+                reset();
+                setConfirmingSignOut(false);
+              }}
+              style={{ minHeight: 28, justifyContent: 'center' }}
+            >
+              <Text style={[type.label, { color: confirmingSignOut ? colors.coralDeep : colors.charcoalSoft }]}>
+                {confirmingSignOut ? copy.sync.signOutConfirm : copy.sync.signOut}
+              </Text>
             </Pressable>
           </View>
+          {confirmingSignOut && (
+            <Text style={[type.caption, { marginTop: spacing.s }]}>{copy.sync.signOutNote}</Text>
+          )}
         </View>
       )}
 
@@ -255,6 +270,12 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
   const [childName, setChildName] = useState('');
   const [childError, setChildError] = useState(false);
   const [childAvatarFor, setChildAvatarFor] = useState<string | null>(null);
+  const [kidLinkFor, setKidLinkFor] = useState<{ name: string; token: string } | null>(null);
+
+  const makeKidLink = async (childId: string, name: string) => {
+    const token = await sync.createKidLink(childId);
+    if (token) setKidLinkFor({ name, token });
+  };
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
 
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -350,9 +371,16 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
                   )}
                 </Pressable>
                 {isChild && onOpenKidMode && (
-                  <Pressable onPress={() => onOpenKidMode(m.id)} style={styles.kidModeBtn} accessibilityRole="button">
-                    <Text style={[type.label, { fontSize: 12, color: colors.surface }]}>{copy.settings.openKidMode}</Text>
-                  </Pressable>
+                  <>
+                    <Pressable onPress={() => onOpenKidMode(m.id)} style={styles.kidModeBtn} accessibilityRole="button">
+                      <Text style={[type.label, { fontSize: 12, color: colors.surface }]}>{copy.settings.openKidMode}</Text>
+                    </Pressable>
+                    {FLAGS.kidDeviceLink && (
+                      <Pressable onPress={() => void makeKidLink(m.id, m.name)} style={styles.kidDeviceBtn} accessibilityRole="button">
+                        <Text style={[type.label, { fontSize: 12, color: colors.sageDeep }]}>{copy.settings.kidDeviceCta}</Text>
+                      </Pressable>
+                    )}
+                  </>
                 )}
               </View>
             );
@@ -590,6 +618,25 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
         </Pressable>
       </Modal>
 
+      <Modal visible={kidLinkFor !== null} transparent animationType="fade" onRequestClose={() => setKidLinkFor(null)}>
+        <Pressable style={styles.renameBackdrop} onPress={() => setKidLinkFor(null)}>
+          <Pressable style={styles.renameSheet} onPress={() => {}}>
+            <Text style={[type.h2, { textAlign: 'center' }]}>{copy.settings.kidDeviceTitle(kidLinkFor?.name ?? '')}</Text>
+            <Text style={[type.caption, { textAlign: 'center', marginTop: spacing.xs }]}>{copy.settings.kidDeviceSub}</Text>
+            {kidLinkFor && (
+              <View style={{ alignItems: 'center', marginTop: spacing.l }}>
+                <View style={{ backgroundColor: '#FFFFFF', padding: spacing.m, borderRadius: 12 }}>
+                  <QRCode value={kidUrlFor(kidLinkFor.token)} size={150} color={colors.charcoal} backgroundColor="#FFFFFF" />
+                </View>
+              </View>
+            )}
+            <Pressable onPress={() => setKidLinkFor(null)} style={{ alignItems: 'center', marginTop: spacing.l, minHeight: 44, justifyContent: 'center' }}>
+              <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.photo.cancel}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <HeroAvatarPicker
         visible={childAvatarFor !== null}
         onPick={(key) => { const id = childAvatarFor; setChildAvatarFor(null); if (id) void sync.setHeroAvatar(key, id); }}
@@ -609,6 +656,10 @@ const styles = StyleSheet.create({
   removeBtn: {
     marginTop: spacing.m, minHeight: 44, borderRadius: radius.button, justifyContent: 'center',
     borderWidth: 1.5, borderColor: colors.coral, paddingHorizontal: spacing.l,
+  },
+  kidDeviceBtn: {
+    marginTop: spacing.xs, borderWidth: 1, borderColor: colors.sage, borderRadius: radius.chip,
+    paddingHorizontal: spacing.m, paddingVertical: spacing.xs, minHeight: 30, justifyContent: 'center',
   },
   kidModeBtn: {
     marginTop: spacing.xs, backgroundColor: colors.sage, borderRadius: radius.chip,

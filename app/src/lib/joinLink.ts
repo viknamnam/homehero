@@ -7,9 +7,20 @@
 // all enforced server-side, and adults still sign in with their email first.
 
 export const JOIN_BASE = 'https://heronest.app/join/';
+export const KID_BASE = 'https://heronest.app/kid/';
 
 export function joinUrlFor(code: string): string {
   return JOIN_BASE + code.trim().toUpperCase();
+}
+
+export function kidUrlFor(token: string): string {
+  return KID_BASE + token;
+}
+
+/** Extract a kid-device token from a kid link (heronest.app/kid/TOKEN or heronest://kid/TOKEN). */
+export function kidTokenFromUrl(url: string): string | null {
+  const m = url.match(/(?:heronest\.app\/kid\/|heronest:\/\/kid\/?\??token=?)([A-Za-z0-9_-]{8,})/i);
+  return m ? m[1] : null;
 }
 
 /** Extract an invite code from any incoming URL we recognise. */

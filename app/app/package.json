@@ -1,0 +1,44 @@
+{
+  "name": "heronest",
+  "version": "0.1.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "web": "expo start --web",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo-google-fonts/nunito": "^0.2.3",
+    "@expo/metro-runtime": "~56.0.13",
+    "@opentelemetry/api": "^1.9.0",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@sentry/react-native": "~7.11.0",
+    "@supabase/supabase-js": "^2.45.4",
+    "expo": "^56.0.8",
+    "expo-clipboard": "~56.0.3",
+    "expo-dev-client": "~56.0.18",
+    "expo-file-system": "~56.0.7",
+    "expo-font": "~56.0.5",
+    "expo-image-picker": "~56.0.15",
+    "expo-notifications": "~56.0.8",
+    "expo-speech-recognition": "~56.0.1",
+    "expo-status-bar": "~56.0.4",
+    "lucide-react-native": "^1.17.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-qrcode-svg": "^6.3.21",
+    "react-native-svg": "15.15.4",
+    "react-native-url-polyfill": "^2.0.0",
+    "react-native-web": "^0.21.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@expo/ngrok": "^4.1.0",
+    "@types/react": "~19.2.14",
+    "typescript": "~6.0.3"
+  },
+  "private": true
+}

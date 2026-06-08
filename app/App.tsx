@@ -17,6 +17,13 @@ import ComingSoonScreen from './src/screens/ComingSoonScreen';
 import HomeValueScreen from './src/screens/HomeValueScreen';
 import ThanksScreen from './src/screens/ThanksScreen';
 import KidModeScreen from './src/screens/KidModeScreen';
+import PaywallScreen from './src/screens/PaywallScreen';
+import { accessLevelFor } from './src/lib/entitlement';
+import { useSync } from './src/lib/sync';
+import { LogoLoader } from './src/components/brand';
+import { getKidDevice, redeemKidLink, KidDevice } from './src/lib/kidDevice';
+import { kidTokenFromUrl } from './src/lib/joinLink';
+import { Linking, Share } from 'react-native';
 import { FLAGS } from './src/constants/flags';
 import { Toast } from './src/components/ui';
 import DoodleBackground from './src/components/DoodleBackground';
@@ -32,6 +39,7 @@ type Tab = 'today' | 'week' | 'homeValue' | 'thanks' | 'settings';
 
 function Shell() {
   const { state } = useHousehold();
+  const sync = useSync();
   const [tab, setTab] = useState<Tab>('today');
   const [adding, setAdding] = useState(false);
   const [planPrefill, setPlanPrefill] = useState<PlanPrefill | null>(null);
@@ -46,6 +54,26 @@ function Shell() {
   }, []);
   const enterKidMode = (id: string) => { setKidModeChildId(id); AsyncStorage.setItem(KID_KEY, id).catch(() => {}); };
   const exitKidMode = () => { setKidModeChildId(null); AsyncStorage.removeItem(KID_KEY).catch(() => {}); };
+
+  // Kid-DEVICE mode (#48): a child's own device is bound to one child member and
+  // launches LOCKED into Kids Mode — no tabs, no adult view, no exit. Distinct
+  // from handing a parent's phone over (kidModeChildId above).
+  const [kidDevice, setKidDevice] = useState<KidDevice | null>(null);
+  const [kidDeviceReady, setKidDeviceReady] = useState(false);
+  useEffect(() => {
+    if (!FLAGS.kidDeviceLink) { setKidDeviceReady(true); return; }
+    getKidDevice().then((d) => { setKidDevice(d); setKidDeviceReady(true); });
+    const apply = async (url: string | null) => {
+      const token = url ? kidTokenFromUrl(url) : null;
+      if (token) {
+        const dev = await redeemKidLink(token);
+        if (dev) { setKidDevice(dev); void sync.pullMyHousehold(); }
+      }
+    };
+    void Linking.getInitialURL().then(apply);
+    const sub = Linking.addEventListener('url', (e) => apply(e.url));
+    return () => sub.remove();
+  }, []);
   const [editing, setEditing] = useState<Task | null>(null);
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
@@ -59,6 +87,46 @@ function Shell() {
   }, []);
 
   const insets = useInsets();
+
+  // Kid-device launch: locked Kids Mode, no adult surface on this device at all.
+  if (FLAGS.kidDeviceLink && kidDevice) {
+    if (!state.householdName) {
+      return (
+        <View style={{ flex: 1, backgroundColor: colors.warmWhite, alignItems: 'center', justifyContent: 'center' }}>
+          <LogoLoader label="Setting up…" />
+        </View>
+      );
+    }
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
+        <KidModeScreen childId={kidDevice.memberId} locked onExit={() => {}} />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
+  // Entitlement (#50): when the trial has lapsed and the paywall is live, the
+  // paywall replaces the app — but export is always offered (§13).
+  const access = accessLevelFor({
+    createdAt: state.householdCreatedAt,
+    premiumUntil: state.premiumUntil,
+    grandfathered: state.grandfathered,
+  });
+  if (FLAGS.paywall && state.householdName && access === 'lapsed') {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
+        {FLAGS.doodles && <DoodleBackground />}
+        <PaywallScreen
+          onExport={async () => {
+            try { await Share.share({ message: JSON.stringify({ household: state.householdName, members: state.members, tasks: state.tasks, thanks: state.thanks }, null, 2) }); } catch {}
+          }}
+          onPurchased={() => void sync.pullMyHousehold()}
+        />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
   if (!state.householdName) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.warmWhite }}>
@@ -89,7 +157,7 @@ function Shell() {
         />
       )}
       {tab === 'week' && <WeekScreen />}
-      {tab === 'homeValue' && (FLAGS.homeValue ? <HomeValueScreen onPlan={() => setTab('today')} /> : <ComingSoonScreen kind="homeValue" />)}
+      {tab === 'homeValue' && (FLAGS.homeValue ? <HomeValueScreen onPlan={() => setAdding(true)} /> : <ComingSoonScreen kind="homeValue" />)}
       {tab === 'thanks' && (FLAGS.thanks ? <ThanksScreen onToast={showToast} /> : <ComingSoonScreen kind="thanks" />)}
       {tab === 'settings' && <SettingsScreen onOpenKidMode={FLAGS.kidsMode ? enterKidMode : undefined} />}
 

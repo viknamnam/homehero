@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View,
+  KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { copy } from '../copy/strings';
 import { useHousehold } from '../store/HouseholdStore';
@@ -114,11 +114,24 @@ function JoinFlow({ initialCode }: { initialCode?: string | null }) {
   );
 }
 
+function ChoiceCard({ emoji, title, sub, onPress }: { emoji: string; title: string; sub: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={styles.choice} accessibilityRole="button">
+      <Text style={{ fontSize: 30, marginRight: spacing.m }}>{emoji}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={type.h2}>{title}</Text>
+        <Text style={[type.caption, { marginTop: 2 }]}>{sub}</Text>
+      </View>
+      <Text style={{ fontSize: 22, color: colors.charcoalSoft }}>›</Text>
+    </Pressable>
+  );
+}
+
 export default function OnboardingScreen() {
   const insets = useInsets();
   const { createHousehold } = useHousehold();
   const { cloudEnabled } = useSync();
-  const [mode, setMode] = useState<'create' | 'join'>('create');
+  const [mode, setMode] = useState<'choose' | 'create' | 'join'>('choose');
   const [deepCode, setDeepCode] = useState<string | null>(null);
 
   // Deep-linked invite (#65): scanned QR or tapped heronest.app/join/CODE —
@@ -156,13 +169,19 @@ export default function OnboardingScreen() {
           </Text>
         </View>
 
-        {cloudEnabled && (
-          <View style={{ flexDirection: 'row', marginTop: spacing.l }}>
-            <Chip label={copy.sync.createTab} selected={mode === 'create'} onPress={() => setMode('create')} />
-            <Chip label={copy.sync.signInTab} selected={mode === 'join'} onPress={() => setMode('join')} />
+        {mode === 'choose' ? (
+          <View style={{ marginTop: spacing.l }}>
+            <ChoiceCard emoji="🏡" title={copy.onboarding.chooseCreate} sub={copy.onboarding.chooseCreateSub} onPress={() => setMode('create')} />
+            {cloudEnabled && (
+              <ChoiceCard emoji="💌" title={copy.onboarding.chooseJoin} sub={copy.onboarding.chooseJoinSub} onPress={() => setMode('join')} />
+            )}
+            <Text style={[type.caption, { marginTop: spacing.l, textAlign: 'center' }]}>{copy.onboarding.chooseSignInNote}</Text>
           </View>
-        )}
-
+        ) : (
+        <View>
+          <Pressable onPress={() => setMode('choose')} style={{ marginTop: spacing.m, minHeight: 40, justifyContent: 'center' }} accessibilityRole="button">
+            <Text style={[type.label, { color: colors.charcoalSoft }]}>‹ {copy.onboarding.back}</Text>
+          </Pressable>
         {mode === 'join' ? (
           <JoinFlow initialCode={deepCode} />
         ) : (
@@ -214,6 +233,9 @@ export default function OnboardingScreen() {
             onPress={() => createHousehold(householdName, currency, [myName, partnerName])}
           />
         </View>
+        <Text style={[type.caption, { marginTop: spacing.m, textAlign: 'center' }]}>{copy.onboarding.createSignInHint}</Text>
+        </View>
+        )}
         </View>
         )}
       </ScrollView>
@@ -224,6 +246,11 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: { paddingHorizontal: spacing.l, paddingTop: spacing.xxl, paddingBottom: spacing.l },
   section: { marginTop: spacing.l },
+  choice: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    borderRadius: 18, borderWidth: 1, borderColor: colors.mist,
+    padding: spacing.l, marginBottom: spacing.m,
+  },
   input: {
     backgroundColor: colors.surface,
     borderRadius: 12,

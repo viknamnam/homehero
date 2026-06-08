@@ -12,4 +12,6 @@ export const FLAGS = {
   heroAvatars: true, // illustrated avatar faces (privacy-friendly photo alternative; Kids Mode inherits)
   notifications: true, // #61: thanks-push + weekly digest ONLY (UI auto-hides until the expo-notifications rebuild)
   kidsMode: true, // P3: kid profiles + missions/points/streaks/badges view — avatars only, never money/comparisons
+  kidDeviceLink: false, // (see above)
+  paywall: false, // #50: 14-day trial -> per-household sub. OFF until RevenueCat rebuild + webhook live // #48: a child's OWN device, anon scoped session — OFF until tested on a real device + Anonymous sign-ins enabled in Supabase
 } as const;

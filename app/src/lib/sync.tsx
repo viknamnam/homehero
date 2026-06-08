@@ -43,6 +43,8 @@ interface SyncApi {
   renameMember: (memberId: string, name: string) => Promise<boolean>;
   /** Remove an UNLINKED member (child / placeholder) and their data. Cloud households need to be online. */
   removeMember: (memberId: string) => Promise<boolean>;
+  /** Create a single-use kid device link (24h). Returns the token, or null. */
+  createKidLink: (childId: string) => Promise<string | null>;
   /** Delete the household everywhere (cloud cascade) and reset this device. */
   deleteHousehold: () => Promise<boolean>;
 }
@@ -65,7 +67,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const fail = (e: unknown) => {
-    const msg = e instanceof Error ? e.message : String(e);
+    let msg: string;
+    if (e instanceof Error) msg = e.message;
+    else if (e && typeof e === 'object') {
+      const o = e as Record<string, unknown>;
+      // Supabase/Postgrest errors carry message/details/hint/code
+      msg = [o.message, o.details, o.hint, o.code].filter(Boolean).join(' · ') || JSON.stringify(o);
+    } else msg = String(e);
     setLastError(msg);
     captureError(e); // crash visibility (no-op until a Sentry DSN is configured)
     return false;
@@ -101,8 +109,21 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return false;
     const authUserId = (await supabase.auth.getUser()).data.user?.id;
 
+    // Household fetch tolerates a not-yet-run entitlement migration (0012): if the
+    // premium columns don't exist yet, fall back to the base columns so sync,
+    // invites, rename and remove all keep working.
+    const sb = supabase;
+    const fetchHousehold = async (): Promise<{ data: any; error: any }> => {
+      const full = await sb.from('households')
+        .select('id,name,currency,hide_money,pocket_money_enabled,pocket_points_per_unit,created_at,premium_until,is_grandfathered')
+        .eq('id', householdId).single();
+      if (!full.error) return full;
+      return sb.from('households')
+        .select('id,name,currency,hide_money,pocket_money_enabled,pocket_points_per_unit,created_at')
+        .eq('id', householdId).single();
+    };
     const [{ data: hh, error: e1 }, { data: cats, error: e2 }] = await Promise.all([
-      supabase.from('households').select('id,name,currency,hide_money,pocket_money_enabled,pocket_points_per_unit').eq('id', householdId).single(),
+      fetchHousehold(),
       supabase.from('categories').select('id,key').eq('household_id', householdId),
     ]);
     if (e1 || e2 || !hh || !cats) return fail(e1 ?? e2 ?? new Error('pull failed'));
@@ -190,6 +211,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       hideMoney: hh.hide_money,
       pocketMoneyEnabled: !!hh.pocket_money_enabled,
       pocketPointsPerUnit: hh.pocket_points_per_unit ?? 70,
+      householdCreatedAt: hh.created_at ?? null,
+      premiumUntil: hh.premium_until ?? null,
+      grandfathered: !!hh.is_grandfathered,
       meId: me.id,
       members,
       rates,
@@ -262,6 +286,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         if (!t) return true; // deleted meanwhile
         const categoryId = s.cloud.categoryIds[t.categoryKey];
         if (!categoryId) throw new Error('missing category mapping — sync now to refresh');
+        // Self-heal: a task assigned to a member who was removed during editing
+        // would violate the FK and wedge the whole queue. Reassign orphans to the
+        // current user so the upload always succeeds.
+        const assignedTo = s.members.some((m) => m.id === t.memberId) ? t.memberId : s.meId;
         const { error } = await supabase.from('tasks').upsert({
           household_id: hid,
           category_id: categoryId,
@@ -269,7 +297,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           notes: t.notes ?? null,
           occurred_at: t.occurredAt,
           duration_min: t.durationMin,
-          assigned_member_id: t.memberId,
+          assigned_member_id: assignedTo,
           created_by_member_id: s.meId,
           value_amount: t.valueAmount,
           client_id: t.id,
@@ -532,6 +560,22 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     } catch (e) { return fail(e); }
   }, [session, dispatch]);
 
+  const createKidLink = useCallback(async (childId: string): Promise<string | null> => {
+    const s = stateRef.current;
+    if (!supabase || !session || !s.cloud.householdId) return null;
+    const token = (globalThis.crypto?.randomUUID?.() ?? (uid() + uid())).replace(/-/g, '');
+    try {
+      const { error } = await supabase.from('kid_links').insert({
+        token,
+        household_id: s.cloud.householdId,
+        member_id: childId,
+        expires_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+      });
+      if (error) throw error;
+      return token;
+    } catch (e) { fail(e); return null; }
+  }, [session]);
+
   const renameMember = useCallback(async (memberId: string, name: string): Promise<boolean> => {
     const s = stateRef.current;
     const trimmed = name.trim();
@@ -586,7 +630,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     cloudEnabled: isCloudEnabled,
     session, busy, lastError,
     sendCode, verifyCode, signOut,
-    pullMyHousehold, uploadHousehold, joinWithInvite, createInvite, syncNow, uploadAvatar, setHeroAvatar, addChildMember, renameMember, removeMember, deleteHousehold,
+    pullMyHousehold, uploadHousehold, joinWithInvite, createInvite, syncNow, uploadAvatar, setHeroAvatar, addChildMember, renameMember, removeMember, createKidLink, deleteHousehold,
   };
 
   return <SyncContext.Provider value={api}>{children}</SyncContext.Provider>;

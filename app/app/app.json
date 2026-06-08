@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "HeroNest",
+    "slug": "homehero",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "heronest",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FAF6F0",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF6F0"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.namavira.heronest"
+    },
+    "android": {
+      "package": "com.namavira.heronest",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#C94F3D"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "icon": "./assets/icon.png",
+    "extra": {
+      "eas": {
+        "projectId": "3c17f185-45f6-4dab-8a8f-2517842ab6de"
+      }
+    },
+    "owner": "viknamnam",
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "HeroNest uses the microphone so you can speak your tasks instead of typing them.",
+          "speechRecognitionPermission": "HeroNest uses on-device speech recognition to turn your words into tasks."
+        }
+      ]
+    ]
+  }
+}

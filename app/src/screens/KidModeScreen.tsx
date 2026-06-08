@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CATEGORIES, CategoryKey, categoryByKey } from '../constants/categories';
+import { KID_TAXONOMY, kidCatByKey, DEFAULT_STARTERS, PET_STARTER } from '../constants/kidCategories';
 import { copy, currencySymbol } from '../copy/strings';
 import { isSameDay, startOfWeek, useHousehold, PlannedTask } from '../store/HouseholdStore';
 import { Avatar, Card, IconBadge } from '../components/ui';
+import { RewardAvatar, CelebrationBurst, RingKey, EmblemKey } from '../components/Rewards';
 import { HeroAvatarPicker } from '../components/HeroAvatars';
 import { useSync } from '../lib/sync';
 import { useInsets } from '../lib/insets';
@@ -26,13 +28,7 @@ const KID_TASK_MINUTES = 10;
 // Starter missions (founder request): standard jobs every kid can do TODAY,
 // no adult assignment needed. Adults add more via Plan the Day; these are the
 // always-there floor. Done-state = a matching task logged by this kid today.
-const STARTER_CATEGORIES: CategoryKey[] = ['cleaning', 'cooking', 'cleaning', 'laundry'];
 const POINTS_PER_TASK = 25;
-// Kid-friendly category subset: concrete, doable jobs (no Planning/Admin etc.)
-const KID_CATEGORIES: CategoryKey[] = [
-  'cleaning', 'cooking', 'laundry', 'pets', 'waste', 'homework',
-].filter((k) => CATEGORIES.some((c) => c.key === k)) as CategoryKey[];
-
 type Badge = { key: string; icon: ReturnType<typeof categoryByKey>['icon'] | 'sparkles'; tint: string; title: string; earned: boolean; progress: number; need: number };
 
 function planIsForToday(p: PlannedTask, today: Date): boolean {
@@ -89,15 +85,17 @@ const holdStyles = StyleSheet.create({
   },
 });
 
-export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
-  childId: string; onExit: () => void; onSwitchChild?: (childId: string) => void;
+export default function KidModeScreen({ childId, onExit, onSwitchChild, locked }: {
+  childId: string; onExit: () => void; onSwitchChild?: (childId: string) => void; locked?: boolean;
 }) {
   const { state, addTask, completePlan } = useHousehold();
   const sync = useSync();
   const insets = useInsets();
   const [helping, setHelping] = useState(false);
+  const [helpArea, setHelpArea] = useState<string | null>(null); // chosen kid category key
   const [avatarPicker, setAvatarPicker] = useState(false);
   const [celebration, setCelebration] = useState<string | null>(null);
+  const [burst, setBurst] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
   const kid = state.members.find((m) => m.id === childId);
@@ -125,15 +123,10 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
     [state.tasks, state.plans],
   );
   const starters = useMemo(() => {
-    const base = copy.kids.starters.map((title, i) => ({
-      title,
-      categoryKey: STARTER_CATEGORIES[i] ?? ('cleaning' as CategoryKey),
-    }));
-    const list = householdHasPets
-      ? [...base, { title: copy.kids.starterPet, categoryKey: 'pets' as CategoryKey }]
-      : base;
+    const list = householdHasPets ? [...DEFAULT_STARTERS, PET_STARTER] : DEFAULT_STARTERS;
     return list.map((st) => ({
-      ...st,
+      title: st.title,
+      categoryKey: st.mapsTo,
       done: myTasks.some((t) => isSameDay(t.occurredAt, today) && t.title === st.title),
     }));
   }, [myTasks, householdHasPets]);
@@ -148,24 +141,33 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
 
   const heroPoints = weekTasks.length * POINTS_PER_TASK;
 
-  // Family Quest — Weekend Reset Challenge (Phase 4, mockup). Shared household
-  // goal: everyone's weekend tasks count toward one bar. Derived from tasks,
-  // no new storage. Goal scales gently with household size.
-  const QUEST_GOAL = 100;
-  const weekendPoints = useMemo(() => {
-    const ws = startOfWeek(new Date());
-    const sat = new Date(ws); sat.setDate(ws.getDate() + 5); sat.setHours(0, 0, 0, 0);
-    const mon = new Date(sat); mon.setDate(sat.getDate() + 2);
-    return state.tasks.filter((t) => {
-      const d = new Date(t.occurredAt); return d >= sat && d < mon;
-    }).length * POINTS_PER_TASK;
-  }, [state.tasks]);
+  // Today's missions progress (founder #79): a live bar that fills as the kid
+  // finishes today's list and hits 100% when the day is done. Counts the
+  // starter missions plus any plan-missions scheduled for today (done or not),
+  // so the total stays stable as items get completed.
+  const todayIso = today.toISOString().slice(0, 10);
+  const scheduledToday = (p: PlannedTask) =>
+    p.repeat === 'daily' ||
+    (p.repeat === 'weekly' && p.weekday === today.getDay()) ||
+    isSameDay(p.date, today);
+  const myTodayPlans = useMemo(
+    () => state.plans.filter((p) => p.assignedMemberId === childId && scheduledToday(p)),
+    [state.plans, childId],
+  );
+  const missionsDoneCount = myTodayPlans.filter((p) => p.completedDates.includes(todayIso)).length;
+  const todayTotal = starters.length + myTodayPlans.length;
+  const todayDone = starters.filter((st) => st.done).length + missionsDoneCount;
+  const todayPct = todayTotal > 0 ? Math.round((todayDone / todayTotal) * 100) : 0;
   const weekBadges = useMemo(() => badgesFromTasks(myTasks).filter((b) => b.earned).length, [myTasks]);
+
   // Pocket money (parent-controlled, OFF by default): whole units only —
   // kid-clear, no decimals. Same weekly window as hero points.
   const pocketOn = !!state.pocketMoneyEnabled;
+  // Pocket money is earned by concrete chores only — kindness/helping (emotional)
+  // is recognised with points + badges, never paid (§10 product decision).
+  const payablePoints = weekTasks.filter((t) => t.categoryKey !== 'emotional').length * POINTS_PER_TASK;
   const pocketEarned = pocketOn
-    ? Math.floor(heroPoints / Math.max(1, state.pocketPointsPerUnit ?? 70))
+    ? Math.floor(payablePoints / Math.max(1, state.pocketPointsPerUnit ?? 70))
     : 0;
 
   const streak = useMemo(() => {
@@ -179,7 +181,7 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
     return days;
   }, [myTasks]);
 
-  const badgesFromTasks = (tasks: typeof myTasks): Badge[] => {
+  function badgesFromTasks(tasks: typeof myTasks): Badge[] {
     const countFor = (key: CategoryKey) => tasks.filter((t) => t.categoryKey === key).length;
     const defs = [
       { key: 'kitchen', cat: 'cooking' as CategoryKey, title: copy.kids.badgeKitchen, need: 3 },
@@ -200,6 +202,20 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
   };
   const badges: Badge[] = useMemo(() => badgesFromTasks(myTasks), [myTasks]);
 
+  // Reward frame from streak tier (anchors to the circle, aligns on any avatar)
+  const ringKey: RingKey | null =
+    streak >= 30 ? 'sparkle' : streak >= 14 ? 'gold_stars' : streak >= 7 ? 'gold'
+    : streak >= 3 ? 'silver' : streak >= 1 ? 'bronze' : null;
+  // Corner emblem from the most prestigious earned badge
+  const emblemKey: EmblemKey | null = useMemo(() => {
+    const earned = new Set(badgesFromTasks(myTasks).filter((b) => b.earned).map((b) => b.key));
+    const order: [string, EmblemKey][] = [
+      ['team', 'trophy'], ['tidy', 'star'], ['laundry', 'medal'], ['pet', 'paw'], ['kitchen', 'chef'],
+    ];
+    const hit = order.find(([k]) => earned.has(k));
+    return hit ? hit[1] : null;
+  }, [myTasks]);
+
   if (!kid) return null;
 
   const celebrate = (message: string) => {
@@ -216,7 +232,8 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
     const before = badgeKeysFor(myTasks);
     const after = badgesFromTasks([...myTasks, fake]).filter((b) => b.earned);
     const fresh = after.find((b) => !before.has(b.key));
-    return fresh ? copy.kids.badgeLine(fresh.title) : copy.kids.earned(POINTS_PER_TASK);
+    if (fresh) { setBurst(true); setTimeout(() => setBurst(false), 1500); return copy.kids.badgeLine(fresh.title); }
+    return copy.kids.earned(POINTS_PER_TASK);
   };
 
   const completeMission = (p: PlannedTask) => {
@@ -226,10 +243,11 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
     celebrate(msg);
   };
 
-  const logHelp = (categoryKey: CategoryKey) => {
-    const msg = celebrationFor(categoryKey);
-    addTask({ categoryKey, durationMin: KID_TASK_MINUTES, memberId: childId });
+  const logHelp = (categoryKey: CategoryKey, title: string) => {
+    const msg = celebrationFor(categoryKey, title);
+    addTask({ categoryKey, title, durationMin: KID_TASK_MINUTES, memberId: childId });
     setHelping(false);
+    setHelpArea(null);
     celebrate(msg);
   };
 
@@ -238,21 +256,26 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
       {FLAGS.doodles && <DoodleBackground density="playful" />}
       <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + spacing.l }]}>
         {/* Hold-to-exit: quick taps do nothing — a light adult gate */}
-        <HoldToExit label={copy.kids.exitHint} onComplete={onExit} style={{ alignSelf: 'flex-end', marginBottom: spacing.s }} />
+        {!locked && <HoldToExit label={copy.kids.exitHint} onComplete={onExit} style={{ alignSelf: 'flex-end', marginBottom: spacing.s }} />}
 
         <View style={styles.greetRow}>
           <Pressable onPress={() => setAvatarPicker(true)} accessibilityLabel={copy.photo.heroTitle} hitSlop={6}>
-            <Avatar name={kid.name} colour={kid.colour} size={56} avatarUrl={kid.avatarUrl} memberId={kid.id} />
+            <View style={{ width: 64, height: 64, alignItems: 'center', justifyContent: 'center' }}>
+              <RewardAvatar size={64} ring={ringKey} emblem={emblemKey}>
+                <Avatar name={kid.name} colour={kid.colour} size={64 - (ringKey ? 16 : 0)} avatarUrl={kid.avatarUrl} memberId={kid.id} />
+              </RewardAvatar>
+              {burst && <CelebrationBurst size={64} />}
+            </View>
           </Pressable>
           <Pressable
             style={{ marginLeft: spacing.m, flex: 1 }}
-            onPress={siblings.length > 0 && onSwitchChild ? () => setSwitcherOpen(true) : undefined}
+            onPress={!locked && siblings.length > 0 && onSwitchChild ? () => setSwitcherOpen(true) : undefined}
             accessibilityRole={siblings.length > 0 ? 'button' : undefined}
             accessibilityLabel={siblings.length > 0 ? copy.kids.switchTitle : undefined}
           >
             <Text style={[type.serifTitle, { fontSize: 28 }]}>
               {copy.kids.greeting(kid.name)}
-              {siblings.length > 0 && onSwitchChild ? <Text style={{ fontSize: 16, color: colors.charcoalSoft }}>  ▾</Text> : null}
+              {!locked && siblings.length > 0 && onSwitchChild ? <Text style={{ fontSize: 16, color: colors.charcoalSoft }}>  ▾</Text> : null}
             </Text>
             <Text style={[type.caption, { marginTop: 1 }]}>{greetingSub}</Text>
           </Pressable>
@@ -269,11 +292,15 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
 
         <Card style={{ marginTop: spacing.l }}>
           <Text style={type.h2}>{copy.kids.missionsTitle}</Text>
-          {missions.length === 0 && startersLeft === 0 && (
-            <Text style={[type.body, { marginTop: spacing.s, color: colors.sageDeep }]}>
-              {copy.kids.allDone[Math.floor(today.getTime() / 86400000) % copy.kids.allDone.length]}
-            </Text>
-          )}
+          {missions.length === 0 && startersLeft === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: spacing.m }}>
+              <Text style={{ fontSize: 40 }}>🎉</Text>
+              <Text style={[type.h2, { textAlign: 'center', marginTop: spacing.xs }]}>
+                {copy.kids.allDone[Math.floor(today.getTime() / 86400000) % copy.kids.allDone.length]}
+              </Text>
+              <Text style={[type.caption, { textAlign: 'center', marginTop: spacing.xs }]}>{copy.kids.allDoneExtra}</Text>
+            </View>
+          ) : null}
           {missions.map((p) => {
               const cat = categoryByKey(p.categoryKey);
               return (
@@ -292,47 +319,39 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
                 </View>
               );
             })}
-          {starters.map((st) => {
+          {starters.filter((st) => !st.done).map((st) => {
             const cat = categoryByKey(st.categoryKey);
             return (
-              <View key={st.title} style={[styles.missionRow, st.done && { opacity: 0.45 }]}>
+              <View key={st.title} style={styles.missionRow}>
                 <IconBadge icon={cat.icon} tint={colors.peachTint} size={36} />
                 <View style={{ flex: 1, marginLeft: spacing.m }}>
                   <Text style={type.body}>{st.title}</Text>
                   <Text style={[type.caption, { fontSize: 12 }]}>⭐ {POINTS_PER_TASK} pts</Text>
                 </View>
-                {st.done ? (
-                  <View style={[styles.doneCircle, { backgroundColor: colors.sage, alignItems: 'center', justifyContent: 'center' }]}>
-                    <Text style={{ color: '#FFFFFF', fontSize: 16 }}>✓</Text>
-                  </View>
-                ) : (
-                  <Pressable
-                    onPress={() => { const msg = celebrationFor(st.categoryKey, st.title); addTask({ categoryKey: st.categoryKey, title: st.title, durationMin: KID_TASK_MINUTES, memberId: childId }); celebrate(msg); }}
-                    style={styles.doneCircle}
-                    accessibilityRole="button"
-                    accessibilityLabel={copy.kids.missionDone}
-                  />
-                )}
+                <Pressable
+                  onPress={() => { const msg = celebrationFor(st.categoryKey, st.title); addTask({ categoryKey: st.categoryKey, title: st.title, durationMin: KID_TASK_MINUTES, memberId: childId }); celebrate(msg); }}
+                  style={styles.doneCircle}
+                  accessibilityRole="button"
+                  accessibilityLabel={copy.kids.missionDone}
+                />
               </View>
             );
           })}
         </Card>
 
-        {/* Family Quest — Weekend Reset Challenge (shared household goal) */}
+        {/* Today's missions progress — always live, hits 100% when the day is done */}
         <Card style={{ marginTop: spacing.l }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ fontSize: 20, marginRight: spacing.s }}>🚩</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[type.caption, { fontSize: 11 }]}>{copy.kids.questLabel}</Text>
-              <Text style={type.h2}>{copy.kids.questTitle}</Text>
-            </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={type.h2}>{copy.kids.todayProgressTitle}</Text>
+            <Text style={[type.h2, { color: colors.sageDeep }]}>{todayPct}%</Text>
           </View>
-          <Text style={[type.caption, { marginTop: spacing.xs }]}>{copy.kids.questSub}</Text>
           <View style={styles.questTrack}>
-            <View style={[styles.questFill, { width: `${Math.min(100, (weekendPoints / QUEST_GOAL) * 100)}%` }]} />
+            <View style={[styles.questFill, { width: `${todayPct}%` }]} />
           </View>
           <Text style={[type.caption, { fontSize: 12, marginTop: spacing.xs }]}>
-            {Math.min(weekendPoints, QUEST_GOAL)} / {QUEST_GOAL} pts
+            {todayDone >= todayTotal && todayTotal > 0
+              ? copy.kids.todayProgressDone
+              : copy.kids.todayProgressSub(todayDone, todayTotal)}
           </Text>
         </Card>
 
@@ -359,7 +378,11 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
                 <Text style={[type.caption, { fontSize: 10, textAlign: 'center', marginTop: 2 }]} numberOfLines={2}>
                   {b.title}
                 </Text>
-                {!b.earned && (
+                {b.earned ? (
+                  <Text style={[type.caption, { fontSize: 9, color: colors.sageDeep, fontFamily: fonts.bold }]}>
+                    {copy.kids.badgeEarnedTag}
+                  </Text>
+                ) : (
                   <Text style={[type.caption, { fontSize: 9, color: colors.sageDeep }]}>
                     {copy.kids.badgeProgress(b.progress, b.need)}
                   </Text>
@@ -386,26 +409,50 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
 
         {helping ? (
           <Card style={{ marginTop: spacing.l }}>
-            <Text style={[type.h2, { textAlign: 'center' }]}>{copy.kids.helpPrompt}</Text>
-            <View style={styles.helpGrid}>
-              {KID_CATEGORIES.map((key) => {
-                const cat = categoryByKey(key);
-                return (
-                  <Pressable key={key} onPress={() => logHelp(key)} style={styles.helpCell} accessibilityRole="button">
-                    <IconBadge icon={cat.icon} tint={colors.peachTint} size={44} />
-                    <Text style={[type.caption, { fontSize: 11, textAlign: 'center', marginTop: 4 }]} numberOfLines={2}>
-                      {cat.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Pressable onPress={() => setHelping(false)} style={{ alignItems: 'center', marginTop: spacing.s, minHeight: 44, justifyContent: 'center' }}>
-              <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.photo.cancel}</Text>
-            </Pressable>
+            {!helpArea ? (
+              <>
+                <Text style={[type.h2, { textAlign: 'center' }]}>{copy.kids.helpPrompt}</Text>
+                <View style={styles.helpGrid}>
+                  {KID_TAXONOMY.map((kc) => (
+                    <Pressable key={kc.key} onPress={() => setHelpArea(kc.key)} style={styles.helpCell} accessibilityRole="button">
+                      <View style={styles.helpEmoji}><Text style={{ fontSize: 28 }}>{kc.emoji}</Text></View>
+                      <Text style={[type.caption, { fontSize: 11, textAlign: 'center', marginTop: 4 }]} numberOfLines={2}>
+                        {kc.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Pressable onPress={() => setHelping(false)} style={{ alignItems: 'center', marginTop: spacing.s, minHeight: 44, justifyContent: 'center' }}>
+                  <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.photo.cancel}</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                {(() => {
+                  const kc = kidCatByKey(helpArea)!;
+                  return (
+                    <>
+                      <Text style={[type.h2, { textAlign: 'center' }]}>{kc.emoji} {kc.label}</Text>
+                      <Text style={[type.caption, { textAlign: 'center', marginTop: 2 }]}>{copy.kids.helpPickOne}</Text>
+                      <View style={{ marginTop: spacing.m }}>
+                        {kc.missions.map((m) => (
+                          <Pressable key={m} onPress={() => logHelp(kc.mapsTo, m)} style={styles.helpMissionRow} accessibilityRole="button">
+                            <Text style={type.body}>{m}</Text>
+                            <Text style={{ fontSize: 18, color: colors.sageDeep }}>＋</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                      <Pressable onPress={() => setHelpArea(null)} style={{ alignItems: 'center', marginTop: spacing.s, minHeight: 44, justifyContent: 'center' }}>
+                        <Text style={[type.label, { color: colors.charcoalSoft }]}>‹ {copy.kids.helpBack}</Text>
+                      </Pressable>
+                    </>
+                  );
+                })()}
+              </>
+            )}
           </Card>
         ) : (
-          <Pressable onPress={() => setHelping(true)} style={styles.helpedBtn} accessibilityRole="button">
+          <Pressable onPress={() => { setHelping(true); setHelpArea(null); }} style={styles.helpedBtn} accessibilityRole="button">
             <Icon name="sparkles" size={20} color="#FFFFFF" strokeWidth={2.4} />
             <Text style={[type.h2, { color: '#FFFFFF', marginLeft: spacing.s }]}>{copy.kids.helpedCta}</Text>
           </Pressable>
@@ -540,6 +587,8 @@ const styles = StyleSheet.create({
     minHeight: 56, marginTop: spacing.l, ...shadow.card,
   },
   helpGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: spacing.m, gap: spacing.m },
+  helpEmoji: { width: 56, height: 56, borderRadius: 16, backgroundColor: colors.peachTint, alignItems: 'center', justifyContent: 'center' },
+  helpMissionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.m, paddingHorizontal: spacing.m, borderRadius: 12, backgroundColor: colors.warmWhite, marginBottom: spacing.s },
   helpCell: { width: 76, alignItems: 'center' },
   celebration: {
     position: 'absolute', alignSelf: 'center',

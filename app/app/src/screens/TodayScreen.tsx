@@ -1,0 +1,314 @@
+import React, { useMemo, useState } from 'react';
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { CategoryKey, categoryByKey } from '../constants/categories';
+import { copy, currencySymbol } from '../copy/strings';
+import { heroGreeting } from '../lib/heroVoice';
+import { fmtHM, inWeekOf, isSameDay, startOfWeek, useHousehold, Task } from '../store/HouseholdStore';
+import { AffirmationCard, Avatar, Card, Chip, IconBadge, PrimaryButton, StatCardCompact } from '../components/ui';
+import { usePhotoPicker } from '../lib/usePhotoPicker';
+import { PlanCard } from '../components/PlanCard';
+import { HeroAvatarPicker } from '../components/HeroAvatars';
+import { AvatarMenuSheet } from '../components/AvatarMenu';
+import { FamilySwitcherSheet } from '../components/FamilySwitcher';
+import { FLAGS } from '../constants/flags';
+import { Header } from '../components/brand';
+import { colors, fonts, spacing, type } from '../theme/tokens';
+
+function greetingWord() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning,';
+  if (h < 18) return 'Good afternoon,';
+  return 'Good evening,';
+}
+
+const CAT_TINTS: Record<string, string> = {
+  // emoji icons sit on these pastel circles in task rows
+  default: colors.skyTint,
+};
+
+function TaskRow({ task, personColour, personName, onEdit, onDelete }: {
+  task: Task; personColour: string; personName: string; onEdit: () => void; onDelete: () => void;
+}) {
+  const cat = categoryByKey(task.categoryKey);
+  return (
+    <Card style={styles.taskRow}>
+      <Pressable
+        onPress={onEdit}
+        accessibilityRole="button"
+        accessibilityLabel="Edit task"
+        style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+      >
+        <IconBadge icon={cat.icon} tint={CAT_TINTS.default} size={36} />
+        <View style={{ flex: 1, marginLeft: spacing.m }}>
+          <Text style={type.body}>{task.title ?? cat.name}</Text>
+          <Text style={type.caption}>{personName} · {task.durationMin} min</Text>
+        </View>
+      </Pressable>
+      <View style={[styles.dot, { backgroundColor: personColour }]} />
+      <Pressable onPress={onDelete} hitSlop={12} accessibilityLabel="Delete task">
+        <Text style={[type.label, { color: colors.charcoalSoft, marginLeft: spacing.m }]}>✕</Text>
+      </Pressable>
+    </Card>
+  );
+}
+
+const QUICK_SUGGESTIONS: { title: string; categoryKey: CategoryKey; minutes: number }[] =
+  copy.today.quickAddItems.map((title, i) => ({
+    title,
+    categoryKey: (['cooking', 'cleaning', 'laundry', 'child_logistics', 'shopping', 'planning'][i] ?? 'other') as CategoryKey,
+    minutes: [30, 15, 20, 30, 30, 15][i] ?? 15,
+  }));
+
+export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan, onOpenKidMode }: {
+  onAdd: () => void; onEdit: (task: Task) => void; onSeeWeek?: () => void;
+  onLogPlan?: (plan: import('../store/HouseholdStore').PlannedTask, memberId: string) => void;
+  onOpenKidMode?: (childId: string) => void;
+}) {
+  const { state, deleteTask, addTask, addPlan } = useHousehold();
+  const [pendingSuggest, setPendingSuggest] = useState<{ title: string; categoryKey: CategoryKey; minutes: number } | null>(null);
+  const me = state.members.find((m) => m.id === state.meId);
+  const { canEditPhoto, canUploadPhoto, changeMyPhoto, avatarPickerVisible, closeAvatarPicker, pickHeroAvatar, menuVisible, closeMenu, menuHeroFace, menuCamera, menuLibrary } = usePhotoPicker();
+  const [familyOpen, setFamilyOpen] = useState(false);
+
+  const todayTasks = useMemo(() => {
+    const now = new Date();
+    return state.tasks.filter((t) => isSameDay(t.occurredAt, now));
+  }, [state.tasks]);
+
+  const totalMin = todayTasks.reduce((s, t) => s + t.durationMin, 0);
+  const totalValue = todayTasks.reduce((s, t) => s + t.valueAmount, 0);
+  const cur = currencySymbol[state.currency] ?? '';
+  const greetSub = heroGreeting(state.heroStyle);
+
+  // "This week so far" — the morning-open view when today is still empty
+  const weekStats = useMemo(() => {
+    const ws = startOfWeek(new Date());
+    const wk = state.tasks.filter((t) => inWeekOf(t.occurredAt, ws));
+    const min = wk.reduce((sum, t) => sum + t.durationMin, 0);
+    const value = wk.reduce((sum, t) => sum + t.valueAmount, 0);
+    const byCat = new Map<string, number>();
+    wk.forEach((t) => byCat.set(t.categoryKey, (byCat.get(t.categoryKey) ?? 0) + t.durationMin));
+    const top = [...byCat.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([k, m2]) => ({ cat: categoryByKey(k as CategoryKey), min: m2 }));
+    return { min, value, top };
+  }, [state.tasks]);
+
+  const memberById = (id: string) => state.members.find((m) => m.id === id);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+      <FlatList
+        data={todayTasks}
+        keyExtractor={(t) => t.id}
+        contentContainerStyle={styles.container}
+        ListHeaderComponent={
+          <View>
+            <Header />
+
+            {/* Greeting block — compact: name + subline in one tight unit */}
+            <View style={styles.greetRow}>
+              <Pressable
+                onPress={changeMyPhoto}
+                disabled={!canEditPhoto}
+                accessibilityLabel={canEditPhoto ? copy.photo.title : me?.name}
+                hitSlop={6}
+              >
+                <Avatar name={me?.name ?? ''} colour={me?.colour ?? colors.peach} size={48} avatarUrl={me?.avatarUrl} memberId={me?.id} />
+              </Pressable>
+              <Pressable
+                style={{ marginLeft: spacing.m, flex: 1 }}
+                onPress={onOpenKidMode ? () => setFamilyOpen(true) : undefined}
+                accessibilityRole={onOpenKidMode ? 'button' : undefined}
+                accessibilityLabel={onOpenKidMode ? copy.family.title : undefined}
+              >
+                <Text style={type.caption}>{greetingWord()}</Text>
+                <Text style={[type.serifTitle, { fontSize: 26, marginTop: -2 }]}>
+                  {me?.name} <Text style={{ fontSize: 18 }}>💛</Text>
+                  {onOpenKidMode ? <Text style={{ fontSize: 15, color: colors.charcoalSoft }}>  ▾</Text> : null}
+                </Text>
+                <Text style={[type.caption, { marginTop: 1 }]}>{greetSub}</Text>
+              </Pressable>
+            </View>
+
+            {/* Compact stat row — everything important visible at a glance (refined mockup) */}
+            <View style={styles.statRow}>
+              <StatCardCompact
+                icon="clipboard-check" iconTint={colors.sageTint}
+                label={copy.today.statTasks}
+                value={String(todayTasks.length)}
+              />
+              <StatCardCompact
+                icon="clock" iconTint={colors.skyTint}
+                label={copy.today.statTime}
+                value={fmtHM(totalMin)}
+                sub={copy.today.statTimeSub}
+              />
+              {!state.hideMoney && (
+                <StatCardCompact
+                  icon="coins" iconTint={colors.butterTint}
+                  label={copy.today.statValue}
+                  value={`${cur}${totalValue}`}
+                  sub={copy.today.statValueSub}
+                />
+              )}
+            </View>
+
+            {FLAGS.planTheDay && onLogPlan && <PlanCard onLogPlan={onLogPlan} />}
+
+            {todayTasks.length === 0 ? (
+              weekStats.min > 0 ? (
+                <Card style={{ marginTop: spacing.xs }}>
+                  <Text style={type.h2}>{copy.today.weekSoFarHeader}</Text>
+                  <View style={{ flexDirection: 'row', marginTop: spacing.s }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={type.caption}>Hours</Text>
+                      <Text style={[type.display, { fontSize: 24 }]}>{fmtHM(weekStats.min)}</Text>
+                    </View>
+                    {!state.hideMoney && (
+                      <View style={{ flex: 1 }}>
+                        <Text style={type.caption}>Value created</Text>
+                        <Text style={[type.display, { fontSize: 24 }]}>{cur}{weekStats.value}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.m }}>
+                    {weekStats.top.map((t) => (
+                      <Chip key={t.cat.key} label={`${t.cat.name} · ${fmtHM(t.min)}`} iconName={t.cat.icon} />
+                    ))}
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={type.caption}>{copy.today.weekSoFarSub}</Text>
+                    {onSeeWeek && (
+                      <Pressable onPress={onSeeWeek} hitSlop={8} accessibilityRole="button">
+                        <Text style={[type.label, { color: colors.coralDeep }]}>{copy.today.weekSoFarCta}</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                </Card>
+              ) : (
+                <Card style={{ marginTop: spacing.xs }}>
+                  <Text style={type.h2}>{copy.today.quickAddTitle}</Text>
+                  <Text style={[type.caption, { marginTop: 2 }]}>{copy.today.quickAddSub}</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.m, gap: spacing.s }}>
+                    {QUICK_SUGGESTIONS.map((sug) => {
+                      const cat = categoryByKey(sug.categoryKey);
+                      return (
+                        <Pressable
+                          key={sug.title}
+                          onPress={() => setPendingSuggest(sug)}
+                          style={styles.suggestChip}
+                          accessibilityRole="button"
+                        >
+                          <IconBadge icon={cat.icon} tint={colors.peachTint} size={24} />
+                          <Text style={[type.label, { marginLeft: spacing.xs, fontSize: 13 }]}>{sug.title}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </Card>
+              )
+            ) : (
+              <Text style={[type.h2, { marginTop: spacing.m, marginBottom: spacing.s }]}>Today</Text>
+            )}
+          </View>
+        }
+        renderItem={({ item }) => {
+          const m = memberById(item.memberId);
+          return (
+            <TaskRow
+              task={item}
+              personName={m?.name ?? ''}
+              personColour={m?.colour ?? colors.mist}
+              onEdit={() => onEdit(item)}
+              onDelete={() => deleteTask(item.id)}
+            />
+          );
+        }}
+        ListFooterComponent={
+          <View>
+            {todayTasks.length > 0 && (
+              <View style={{ marginTop: spacing.m }}>
+                <AffirmationCard title={copy.today.affirmTitle} sub={copy.today.affirmSub} />
+              </View>
+            )}
+            {/* CTA lives in the content flow — no overlap with the tab bar; the ＋ tab is always available */}
+            <View style={{ marginTop: spacing.l }}>
+              <PrimaryButton
+                label={`＋ ${copy.today.addTaskCta}`}
+                sub={copy.today.addTaskSub}
+                onPress={onAdd}
+              />
+            </View>
+          </View>
+        }
+      />
+      <Modal visible={pendingSuggest !== null} transparent animationType="fade" onRequestClose={() => setPendingSuggest(null)}>
+        <Pressable style={qa.backdrop} onPress={() => setPendingSuggest(null)}>
+          <Pressable style={qa.sheet} onPress={() => {}}>
+            <Text style={[type.h2, { textAlign: 'center' }]}>{pendingSuggest?.title}</Text>
+            <View style={{ marginTop: spacing.l }}>
+              <PrimaryButton
+                label={copy.today.quickAddDone}
+                onPress={() => {
+                  if (pendingSuggest && state.meId) {
+                    addTask({ categoryKey: pendingSuggest.categoryKey, title: pendingSuggest.title, durationMin: pendingSuggest.minutes, memberId: state.meId });
+                  }
+                  setPendingSuggest(null);
+                }}
+              />
+            </View>
+            <Pressable
+              onPress={() => {
+                if (pendingSuggest) addPlan({ categoryKey: pendingSuggest.categoryKey, title: pendingSuggest.title, assignedMemberId: null, repeat: 'none' });
+                setPendingSuggest(null);
+              }}
+              style={{ minHeight: 48, justifyContent: 'center', alignItems: 'center', marginTop: spacing.s }}
+              accessibilityRole="button"
+            >
+              <Text style={[type.label, { color: colors.coralDeep }]}>{copy.today.quickAddPlan}</Text>
+            </Pressable>
+            <Pressable onPress={() => setPendingSuggest(null)} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.photo.cancel}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <AvatarMenuSheet
+        visible={menuVisible}
+        onClose={closeMenu}
+        onHeroFace={menuHeroFace}
+        onCamera={menuCamera}
+        onLibrary={menuLibrary}
+        photosAvailable={canUploadPhoto}
+      />
+      <HeroAvatarPicker visible={avatarPickerVisible} onPick={pickHeroAvatar} onClose={closeAvatarPicker} />
+      {onOpenKidMode && (
+        <FamilySwitcherSheet visible={familyOpen} onClose={() => setFamilyOpen(false)} onOpenKidMode={onOpenKidMode} />
+      )}
+    </View>
+  );
+}
+
+const qa = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(46, 53, 72, 0.35)', justifyContent: 'center', paddingHorizontal: spacing.xl },
+  sheet: { backgroundColor: colors.warmWhite, borderRadius: 20, padding: spacing.xl, ...require('../theme/tokens').shadow.card },
+});
+
+const styles = StyleSheet.create({
+  suggestChip: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, borderRadius: require('../theme/tokens').radius.chip,
+    paddingVertical: spacing.xs, paddingHorizontal: spacing.s, paddingRight: spacing.m,
+  },
+  container: { paddingHorizontal: spacing.l, paddingTop: spacing.xl, paddingBottom: 110 },
+  greetRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.m },
+  statRow: { flexDirection: 'row', gap: spacing.s, marginBottom: spacing.s },
+  taskRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: spacing.s + 2, marginBottom: spacing.s,
+  },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+});
