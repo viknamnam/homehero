@@ -1,4 +1,5 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -36,6 +37,15 @@ function Shell() {
   const [planPrefill, setPlanPrefill] = useState<PlanPrefill | null>(null);
   const [quickLogging, setQuickLogging] = useState(false);
   const [kidModeChildId, setKidModeChildId] = useState<string | null>(null);
+  // Persist Kids Mode across app restarts: a child handed the phone can't
+  // escape to the adult view by force-closing the app (security), and the
+  // kid's world simply resumes where it was.
+  const KID_KEY = 'heronest.kidmode';
+  useEffect(() => {
+    AsyncStorage.getItem(KID_KEY).then((v: string | null) => { if (v) setKidModeChildId(v); }).catch(() => {});
+  }, []);
+  const enterKidMode = (id: string) => { setKidModeChildId(id); AsyncStorage.setItem(KID_KEY, id).catch(() => {}); };
+  const exitKidMode = () => { setKidModeChildId(null); AsyncStorage.removeItem(KID_KEY).catch(() => {}); };
   const [editing, setEditing] = useState<Task | null>(null);
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
@@ -68,7 +78,7 @@ function Shell() {
       {FLAGS.doodles && <DoodleBackground />}
       {tab === 'today' && (
         <TodayScreen
-          onOpenKidMode={FLAGS.kidsMode ? (id) => setKidModeChildId(id) : undefined}
+          onOpenKidMode={FLAGS.kidsMode ? enterKidMode : undefined}
           onAdd={() => setAdding(true)}
           onEdit={(t) => setEditing(t)}
           onSeeWeek={() => setTab('week')}
@@ -81,7 +91,7 @@ function Shell() {
       {tab === 'week' && <WeekScreen />}
       {tab === 'homeValue' && (FLAGS.homeValue ? <HomeValueScreen onPlan={() => setTab('today')} /> : <ComingSoonScreen kind="homeValue" />)}
       {tab === 'thanks' && (FLAGS.thanks ? <ThanksScreen onToast={showToast} /> : <ComingSoonScreen kind="thanks" />)}
-      {tab === 'settings' && <SettingsScreen onOpenKidMode={FLAGS.kidsMode ? (id) => setKidModeChildId(id) : undefined} />}
+      {tab === 'settings' && <SettingsScreen onOpenKidMode={FLAGS.kidsMode ? enterKidMode : undefined} />}
 
       {/* Settings gear — top-right on every main screen */}
       {!overlayOpen && (
@@ -129,8 +139,8 @@ function Shell() {
       {FLAGS.kidsMode && kidModeChildId && (
         <KidModeScreen
           childId={kidModeChildId}
-          onExit={() => setKidModeChildId(null)}
-          onSwitchChild={(id) => setKidModeChildId(id)}
+          onExit={exitKidMode}
+          onSwitchChild={enterKidMode}
         />
       )}
 

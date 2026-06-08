@@ -58,6 +58,17 @@ export default function WeekScreen() {
     return map;
   }, [weekTasks]);
 
+  // Gentle rebalancing nudge (§9): name the heaviest category as an OBSERVATION,
+  // offer a PRACTICAL option, point to PLANNING. Never names a person, never
+  // frames it as unfair. Only shows once there's enough of a week to comment on.
+  const topCategory = useMemo(() => {
+    const entries = Array.from(byCategory.entries()).sort((a, b) => b[1].min - a[1].min);
+    const top = entries[0];
+    if (!top || top[1].min < 60) return null; // need a meaningful chunk before suggesting
+    const cat = CATEGORIES.find((c) => c.key === top[0]);
+    return cat ? cat.name : null;
+  }, [byCategory]);
+
   // Donut: top 4 categories by time + an "everything else" slice (mockup's Top categories ring)
   const donut = useMemo(() => {
     const rows = CATEGORIES
@@ -104,6 +115,18 @@ export default function WeekScreen() {
       <Text style={[type.serifTitle, { fontSize: 26 }]}>{copy.week.header}</Text>
 
       {/* Hero card — hours ♥ value, like the mockup's "This week at home" */}
+      {topCategory && (
+        <Card style={{ marginTop: spacing.m, backgroundColor: colors.sageTint }}>
+          <View style={{ flexDirection: 'row' }}>
+            <Text style={{ fontSize: 18, marginRight: spacing.s }}>🌱</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={type.body}>{copy.week.rebalanceObservation(topCategory)}</Text>
+              <Text style={[type.caption, { marginTop: spacing.xs }]}>{copy.week.rebalanceOption}</Text>
+            </View>
+          </View>
+        </Card>
+      )}
+
       <Card style={{ marginTop: spacing.m }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View style={{ flex: 1 }}>

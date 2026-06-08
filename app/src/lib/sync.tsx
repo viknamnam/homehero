@@ -102,7 +102,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     const authUserId = (await supabase.auth.getUser()).data.user?.id;
 
     const [{ data: hh, error: e1 }, { data: cats, error: e2 }] = await Promise.all([
-      supabase.from('households').select('id,name,currency,hide_money').eq('id', householdId).single(),
+      supabase.from('households').select('id,name,currency,hide_money,pocket_money_enabled,pocket_points_per_unit').eq('id', householdId).single(),
       supabase.from('categories').select('id,key').eq('household_id', householdId),
     ]);
     if (e1 || e2 || !hh || !cats) return fail(e1 ?? e2 ?? new Error('pull failed'));
@@ -188,6 +188,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       householdName: hh.name,
       currency: hh.currency,
       hideMoney: hh.hide_money,
+      pocketMoneyEnabled: !!hh.pocket_money_enabled,
+      pocketPointsPerUnit: hh.pocket_points_per_unit ?? 70,
       meId: me.id,
       members,
       rates,
@@ -380,7 +382,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'RELINK_MEMBERS', idMap, members: newMembers, meId: myCloudId });
 
       // settings + per-category rates
-      await supabase.from('households').update({ hide_money: s.hideMoney }).eq('id', householdId);
+      await supabase.from('households').update({ hide_money: s.hideMoney, pocket_money_enabled: !!s.pocketMoneyEnabled, pocket_points_per_unit: s.pocketPointsPerUnit ?? 70 }).eq('id', householdId);
       const { data: cats } = await supabase.from('categories').select('id,key').eq('household_id', householdId);
       const idByKey: Partial<Record<CategoryKey, string>> = {};
       (cats ?? []).forEach((c: any) => { idByKey[c.key as CategoryKey] = c.id; });

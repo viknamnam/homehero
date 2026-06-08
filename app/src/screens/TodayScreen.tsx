@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryKey, categoryByKey } from '../constants/categories';
 import { copy, currencySymbol } from '../copy/strings';
 import { heroGreeting } from '../lib/heroVoice';
@@ -52,12 +52,20 @@ function TaskRow({ task, personColour, personName, onEdit, onDelete }: {
   );
 }
 
+const QUICK_SUGGESTIONS: { title: string; categoryKey: CategoryKey; minutes: number }[] =
+  copy.today.quickAddItems.map((title, i) => ({
+    title,
+    categoryKey: (['cooking', 'cleaning', 'laundry', 'child_logistics', 'shopping', 'planning'][i] ?? 'other') as CategoryKey,
+    minutes: [30, 15, 20, 30, 30, 15][i] ?? 15,
+  }));
+
 export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan, onOpenKidMode }: {
   onAdd: () => void; onEdit: (task: Task) => void; onSeeWeek?: () => void;
   onLogPlan?: (plan: import('../store/HouseholdStore').PlannedTask, memberId: string) => void;
   onOpenKidMode?: (childId: string) => void;
 }) {
-  const { state, deleteTask } = useHousehold();
+  const { state, deleteTask, addTask, addPlan } = useHousehold();
+  const [pendingSuggest, setPendingSuggest] = useState<{ title: string; categoryKey: CategoryKey; minutes: number } | null>(null);
   const me = state.members.find((m) => m.id === state.meId);
   const { canEditPhoto, canUploadPhoto, changeMyPhoto, avatarPickerVisible, closeAvatarPicker, pickHeroAvatar, menuVisible, closeMenu, menuHeroFace, menuCamera, menuLibrary } = usePhotoPicker();
   const [familyOpen, setFamilyOpen] = useState(false);
@@ -180,10 +188,25 @@ export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan, onOpe
                   </View>
                 </Card>
               ) : (
-                <Card style={{ marginTop: spacing.xs, alignItems: 'center' }}>
-                  <Text style={[type.body, { textAlign: 'center', color: colors.charcoalSoft }]}>
-                    {copy.today.emptyToday}
-                  </Text>
+                <Card style={{ marginTop: spacing.xs }}>
+                  <Text style={type.h2}>{copy.today.quickAddTitle}</Text>
+                  <Text style={[type.caption, { marginTop: 2 }]}>{copy.today.quickAddSub}</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.m, gap: spacing.s }}>
+                    {QUICK_SUGGESTIONS.map((sug) => {
+                      const cat = categoryByKey(sug.categoryKey);
+                      return (
+                        <Pressable
+                          key={sug.title}
+                          onPress={() => setPendingSuggest(sug)}
+                          style={styles.suggestChip}
+                          accessibilityRole="button"
+                        >
+                          <IconBadge icon={cat.icon} tint={colors.peachTint} size={24} />
+                          <Text style={[type.label, { marginLeft: spacing.xs, fontSize: 13 }]}>{sug.title}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </Card>
               )
             ) : (
@@ -221,6 +244,38 @@ export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan, onOpe
           </View>
         }
       />
+      <Modal visible={pendingSuggest !== null} transparent animationType="fade" onRequestClose={() => setPendingSuggest(null)}>
+        <Pressable style={qa.backdrop} onPress={() => setPendingSuggest(null)}>
+          <Pressable style={qa.sheet} onPress={() => {}}>
+            <Text style={[type.h2, { textAlign: 'center' }]}>{pendingSuggest?.title}</Text>
+            <View style={{ marginTop: spacing.l }}>
+              <PrimaryButton
+                label={copy.today.quickAddDone}
+                onPress={() => {
+                  if (pendingSuggest && state.meId) {
+                    addTask({ categoryKey: pendingSuggest.categoryKey, title: pendingSuggest.title, durationMin: pendingSuggest.minutes, memberId: state.meId });
+                  }
+                  setPendingSuggest(null);
+                }}
+              />
+            </View>
+            <Pressable
+              onPress={() => {
+                if (pendingSuggest) addPlan({ categoryKey: pendingSuggest.categoryKey, title: pendingSuggest.title, assignedMemberId: null, repeat: 'none' });
+                setPendingSuggest(null);
+              }}
+              style={{ minHeight: 48, justifyContent: 'center', alignItems: 'center', marginTop: spacing.s }}
+              accessibilityRole="button"
+            >
+              <Text style={[type.label, { color: colors.coralDeep }]}>{copy.today.quickAddPlan}</Text>
+            </Pressable>
+            <Pressable onPress={() => setPendingSuggest(null)} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.photo.cancel}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <AvatarMenuSheet
         visible={menuVisible}
         onClose={closeMenu}
@@ -237,7 +292,17 @@ export default function TodayScreen({ onAdd, onEdit, onSeeWeek, onLogPlan, onOpe
   );
 }
 
+const qa = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(46, 53, 72, 0.35)', justifyContent: 'center', paddingHorizontal: spacing.xl },
+  sheet: { backgroundColor: colors.warmWhite, borderRadius: 20, padding: spacing.xl, ...require('../theme/tokens').shadow.card },
+});
+
 const styles = StyleSheet.create({
+  suggestChip: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, borderRadius: require('../theme/tokens').radius.chip,
+    paddingVertical: spacing.xs, paddingHorizontal: spacing.s, paddingRight: spacing.m,
+  },
   container: { paddingHorizontal: spacing.l, paddingTop: spacing.xl, paddingBottom: 110 },
   greetRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.m },
   statRow: { flexDirection: 'row', gap: spacing.s, marginBottom: spacing.s },

@@ -131,6 +131,8 @@ export interface PullPayload {
   householdName: string;
   currency: string;
   hideMoney: boolean;
+  pocketMoneyEnabled?: boolean;
+  pocketPointsPerUnit?: number;
   meId: string;
   members: Member[];
   rates: Record<CategoryKey, number>;
@@ -306,6 +308,8 @@ function reducer(state: HouseholdState, action: Action): HouseholdState {
         householdName: p.householdName,
         currency: p.currency,
         hideMoney: p.hideMoney,
+        pocketMoneyEnabled: p.pocketMoneyEnabled ?? state.pocketMoneyEnabled,
+        pocketPointsPerUnit: p.pocketPointsPerUnit ?? state.pocketPointsPerUnit,
         meId: p.meId,
         members: p.members,
         rates: p.rates,

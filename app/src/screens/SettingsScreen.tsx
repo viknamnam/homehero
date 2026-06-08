@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Share, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { CATEGORIES } from '../constants/categories';
 import { HERO_STYLES } from '../lib/heroVoice';
 import { copy, currencySymbol } from '../copy/strings';
@@ -135,22 +135,22 @@ function SyncCard() {
               one-code-per-person rule, "New code" for the next person, and a
               Done to put it away without leaving Settings. */}
           {!inviteCode ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.l, minHeight: 40 }}>
-              <Text style={[type.label, { flex: 1 }]}>{copy.sync.inviteTitle}</Text>
-              <Pressable
-                onPress={async () => {
-                  setInviteBusy(true);
-                  setInviteCode(await sync.createInvite());
-                  setInviteCopied(false);
-                  setInviteBusy(false);
-                }}
-                accessibilityRole="button"
-                style={styles.invitePill}
-              >
-                {inviteBusy
-                  ? <LogoLoader size={20} label={copy.sync.inviteBusy} />
-                  : <Text style={[type.label, { color: colors.surface }]}>{copy.sync.inviteCta}</Text>}
-              </Pressable>
+            <View style={{ marginTop: spacing.l }}>
+              {inviteBusy ? (
+                <View style={{ alignItems: 'center', minHeight: 48, justifyContent: 'center' }}>
+                  <LogoLoader label={copy.sync.inviteBusy} />
+                </View>
+              ) : (
+                <PrimaryButton
+                  label={copy.sync.inviteTitle}
+                  onPress={async () => {
+                    setInviteBusy(true);
+                    setInviteCode(await sync.createInvite());
+                    setInviteCopied(false);
+                    setInviteBusy(false);
+                  }}
+                />
+              )}
             </View>
           ) : (
             <View style={styles.inviteBox}>
@@ -350,8 +350,8 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
                   )}
                 </Pressable>
                 {isChild && onOpenKidMode && (
-                  <Pressable onPress={() => onOpenKidMode(m.id)} hitSlop={8} style={{ marginTop: 2, minHeight: 28, justifyContent: 'center' }}>
-                    <Text style={[type.caption, { fontSize: 11, color: colors.sageDeep }]}>{copy.settings.openKidMode}</Text>
+                  <Pressable onPress={() => onOpenKidMode(m.id)} style={styles.kidModeBtn} accessibilityRole="button">
+                    <Text style={[type.label, { fontSize: 12, color: colors.surface }]}>{copy.settings.openKidMode}</Text>
                   </Pressable>
                 )}
               </View>
@@ -554,14 +554,14 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
         photosAvailable={canUploadPhoto}
       />
       <HeroAvatarPicker visible={avatarPickerVisible} onPick={pickHeroAvatar} onClose={closeAvatarPicker} />
-      {renaming && (
-        <Pressable style={styles.renameBackdrop} onPress={() => setRenaming(null)}>
+      <Modal visible={renaming !== null} transparent animationType="fade" onRequestClose={() => setRenaming(null)}>
+        <Pressable style={styles.renameBackdrop} onPress={() => { setRenaming(null); setConfirmingRemove(false); }}>
           <Pressable style={styles.renameSheet} onPress={() => {}}>
             <Text style={[type.h2, { textAlign: 'center' }]}>{copy.settings.renameTitle}</Text>
             <TextInput
               style={styles.syncInput}
-              value={renaming.name}
-              onChangeText={(v) => setRenaming({ ...renaming, name: v })}
+              value={renaming?.name ?? ''}
+              onChangeText={(v) => setRenaming((r) => r ? { ...r, name: v } : r)}
               autoFocus
             />
             <View style={{ marginTop: spacing.m }}>
@@ -569,26 +569,26 @@ export default function SettingsScreen({ onOpenKidMode }: { onOpenKidMode?: (chi
                 label={copy.settings.renameSave}
                 busyLabel={copy.settings.renameBusy}
                 onPress={saveRename}
-                disabled={!renaming.name.trim()}
+                disabled={!renaming?.name.trim()}
               />
             </View>
             <Pressable onPress={() => { setRenaming(null); setConfirmingRemove(false); }} style={{ alignItems: 'center', marginTop: spacing.s, minHeight: 44, justifyContent: 'center' }}>
               <Text style={[type.label, { color: colors.charcoalSoft }]}>{copy.photo.cancel}</Text>
             </Pressable>
-            {renaming.id !== state.meId && !state.members.find((m) => m.id === renaming.id)?.linked && (
+            {renaming && renaming.id !== state.meId && !state.members.find((m) => m.id === renaming.id)?.linked && (
               <Pressable
                 onPress={() => (confirmingRemove ? void removeRenaming() : setConfirmingRemove(true))}
-                style={{ alignItems: 'center', marginTop: spacing.s, minHeight: 44, justifyContent: 'center' }}
+                style={[styles.removeBtn, confirmingRemove && { backgroundColor: colors.coral }]}
                 accessibilityRole="button"
               >
-                <Text style={[type.label, { color: colors.coralDeep }]}>
-                  {confirmingRemove ? copy.settings.removeConfirm : copy.settings.removeCta(renaming.name.trim() || '')}
+                <Text style={[type.label, { color: confirmingRemove ? colors.surface : colors.coralDeep, textAlign: 'center' }]}>
+                  {confirmingRemove ? copy.settings.removeConfirm : copy.settings.removeCta(renaming?.name.trim() || '')}
                 </Text>
               </Pressable>
             )}
           </Pressable>
         </Pressable>
-      )}
+      </Modal>
 
       <HeroAvatarPicker
         visible={childAvatarFor !== null}
@@ -605,6 +605,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warmWhite, borderRadius: 12, borderWidth: 1,
     borderColor: colors.mist, padding: spacing.m, marginTop: spacing.m,
     fontSize: 16, color: colors.charcoal,
+  },
+  removeBtn: {
+    marginTop: spacing.m, minHeight: 44, borderRadius: radius.button, justifyContent: 'center',
+    borderWidth: 1.5, borderColor: colors.coral, paddingHorizontal: spacing.l,
+  },
+  kidModeBtn: {
+    marginTop: spacing.xs, backgroundColor: colors.sage, borderRadius: radius.chip,
+    paddingHorizontal: spacing.m, paddingVertical: spacing.xs, minHeight: 30, justifyContent: 'center',
   },
   renameBackdrop: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,

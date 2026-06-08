@@ -55,6 +55,11 @@ export const copy = {
     affirmSub: 'Thanks for showing up for the team.',
     addTaskSub: 'Even a 5-minute task counts',
     emptyToday: 'Nothing logged yet today — even a 5-minute task counts.',
+    quickAddTitle: 'Add something to today',
+    quickAddSub: 'Tap to log it now — or pop it on the plan.',
+    quickAddItems: ['Cooked a meal', 'Tidied up', 'Did the laundry', 'School run', 'Did the shopping', 'Sorted admin'],
+    quickAddDone: 'Log as done',
+    quickAddPlan: 'Add to today\'s plan',
     addTaskCta: 'Add task',
   },
   homeValue: {
@@ -354,6 +359,15 @@ export const copy = {
     },
     exitHint: 'Grown-ups: hold to exit',
     switchTitle: 'Whose turn?',
+    questLabel: 'Family Quest',
+    questTitle: 'Weekend Reset Challenge',
+    questSub: 'Work together to earn 100 points this weekend!',
+    recapTitle: 'Your week so far',
+    recapHelps: 'times helped',
+    recapPoints: 'hero points',
+    recapStreak: 'day streak',
+    recapBadges: 'badges',
+    recapCheer: (n: number) => n > 0 ? 'What a brilliant week! 💛' : 'This week is full of chances to shine ✨',
   },
   avatars: {
     // Hero titles (Avatar_guidance doc): playful identity, never rank or judgement
@@ -439,6 +453,8 @@ export const copy = {
     phaseTag: 'Scheduled: Phase 2 · Weeks 9–14',
   },
   week: {
+    rebalanceObservation: (cat: string) => `${cat} took the most time this week.`,
+    rebalanceOption: 'Want to share it around next week? Open Plan the Day to set it up together.',
     header: 'This week at home…',
     heroHours: (h: number, m: number) => `${h}h ${m}m of family work`,
     heroValue: (cur: string, n: number) => `≈ ${cur}${n} estimated value`,

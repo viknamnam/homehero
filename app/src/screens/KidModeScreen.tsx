@@ -50,12 +50,23 @@ function HoldToExit({ label, onComplete, style }: {
   label: string; onComplete: () => void; style?: object;
 }) {
   const progress = React.useRef(new Animated.Value(0)).current;
+  const current = React.useRef(0);
+  React.useEffect(() => {
+    const id = progress.addListener(({ value }) => { current.current = value; });
+    return () => progress.removeListener(id);
+  }, [progress]);
   const begin = () => {
     Animated.timing(progress, { toValue: 1, duration: 1500, useNativeDriver: false }).start(({ finished }) => {
-      if (finished) { progress.setValue(0); onComplete(); }
+      if (finished) { progress.setValue(0); current.current = 0; onComplete(); }
     });
   };
-  const cancel = () => { progress.stopAnimation(); progress.setValue(0); };
+  // Release-to-complete: if the fill is essentially full when you lift your
+  // finger, treat it as done — so "let go when it's green" works as expected.
+  const cancel = () => {
+    progress.stopAnimation();
+    if (current.current >= 0.9) { progress.setValue(0); current.current = 0; onComplete(); }
+    else { progress.setValue(0); current.current = 0; }
+  };
   const width = progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
   return (
     <Pressable onPressIn={begin} onPressOut={cancel} style={[holdStyles.pill, style]} accessibilityLabel={label}>
@@ -73,7 +84,8 @@ const holdStyles = StyleSheet.create({
   },
   fill: {
     position: 'absolute', left: 0, top: 0, bottom: 0,
-    backgroundColor: colors.sageTint,
+    backgroundColor: colors.sage,
+    opacity: 0.85,
   },
 });
 
@@ -135,6 +147,20 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
     : copy.kids.greetingSubFresh[dayIndex % copy.kids.greetingSubFresh.length];
 
   const heroPoints = weekTasks.length * POINTS_PER_TASK;
+
+  // Family Quest — Weekend Reset Challenge (Phase 4, mockup). Shared household
+  // goal: everyone's weekend tasks count toward one bar. Derived from tasks,
+  // no new storage. Goal scales gently with household size.
+  const QUEST_GOAL = 100;
+  const weekendPoints = useMemo(() => {
+    const ws = startOfWeek(new Date());
+    const sat = new Date(ws); sat.setDate(ws.getDate() + 5); sat.setHours(0, 0, 0, 0);
+    const mon = new Date(sat); mon.setDate(sat.getDate() + 2);
+    return state.tasks.filter((t) => {
+      const d = new Date(t.occurredAt); return d >= sat && d < mon;
+    }).length * POINTS_PER_TASK;
+  }, [state.tasks]);
+  const weekBadges = useMemo(() => badgesFromTasks(myTasks).filter((b) => b.earned).length, [myTasks]);
   // Pocket money (parent-controlled, OFF by default): whole units only —
   // kid-clear, no decimals. Same weekly window as hero points.
   const pocketOn = !!state.pocketMoneyEnabled;
@@ -292,6 +318,38 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
           })}
         </Card>
 
+        {/* Family Quest — Weekend Reset Challenge (shared household goal) */}
+        <Card style={{ marginTop: spacing.l }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ fontSize: 20, marginRight: spacing.s }}>🚩</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[type.caption, { fontSize: 11 }]}>{copy.kids.questLabel}</Text>
+              <Text style={type.h2}>{copy.kids.questTitle}</Text>
+            </View>
+          </View>
+          <Text style={[type.caption, { marginTop: spacing.xs }]}>{copy.kids.questSub}</Text>
+          <View style={styles.questTrack}>
+            <View style={[styles.questFill, { width: `${Math.min(100, (weekendPoints / QUEST_GOAL) * 100)}%` }]} />
+          </View>
+          <Text style={[type.caption, { fontSize: 12, marginTop: spacing.xs }]}>
+            {Math.min(weekendPoints, QUEST_GOAL)} / {QUEST_GOAL} pts
+          </Text>
+        </Card>
+
+        {/* Kid weekly recap — effort only, never money or comparison (§10) */}
+        <Card style={{ marginTop: spacing.l }}>
+          <Text style={type.h2}>{copy.kids.recapTitle}</Text>
+          <View style={styles.recapRow}>
+            <RecapStat value={String(weekTasks.length)} label={copy.kids.recapHelps} />
+            <RecapStat value={String(heroPoints)} label={copy.kids.recapPoints} />
+            <RecapStat value={String(streak)} label={copy.kids.recapStreak} />
+            <RecapStat value={String(weekBadges)} label={copy.kids.recapBadges} />
+          </View>
+          <Text style={[type.caption, { marginTop: spacing.m, textAlign: 'center', color: colors.sageDeep }]}>
+            {copy.kids.recapCheer(weekTasks.length)}
+          </Text>
+        </Card>
+
         <Card style={{ marginTop: spacing.l }}>
           <Text style={type.h2}>{copy.kids.badgesTitle}</Text>
           <View style={styles.badgeRow}>
@@ -397,6 +455,15 @@ export default function KidModeScreen({ childId, onExit, onSwitchChild }: {
   );
 }
 
+function RecapStat({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={{ alignItems: 'center', flex: 1 }}>
+      <Text style={{ fontSize: 22, fontFamily: fonts.extrabold, color: colors.charcoal }}>{value}</Text>
+      <Text style={[type.caption, { fontSize: 10, textAlign: 'center' }]} numberOfLines={2}>{label}</Text>
+    </View>
+  );
+}
+
 function KidStat({ tint, icon, label, value, sub }: {
   tint: string; icon: 'clipboard-check' | 'sparkles' | 'clock' | 'coins'; label: string; value: string; sub: string;
 }) {
@@ -444,6 +511,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs, alignItems: 'center', ...shadow.card,
   },
   statValue: { fontSize: 22, fontFamily: fonts.extrabold, color: colors.charcoal, marginTop: 2 },
+  questTrack: {
+    height: 12, borderRadius: 6, backgroundColor: colors.mist,
+    marginTop: spacing.m, overflow: 'hidden',
+  },
+  questFill: { height: 12, borderRadius: 6, backgroundColor: colors.sage },
+  recapRow: { flexDirection: 'row', marginTop: spacing.m, gap: spacing.s },
   missionRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.m },
   doneCircle: {
     width: 30, height: 30, borderRadius: 15,
